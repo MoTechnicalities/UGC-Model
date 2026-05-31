@@ -27,3 +27,6 @@ jobs:
 
       - name: Cargo Test
         run: cargo test --locked
+
+      - name: Conversation Benchmark
+        run: bash scripts/conversation-benchmark.sh

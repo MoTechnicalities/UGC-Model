@@ -1,0 +1,57 @@
+[
+  {
+    "prompt": "Who are you and what can you do?",
+    "expected_intent": "identity",
+    "expected_style": "standard",
+    "required_substrings": ["UGC-Model", "Next options:"]
+  },
+  {
+    "prompt": "Give me a brief overview of your capabilities",
+    "expected_intent": "general",
+    "expected_style": "concise",
+    "required_substrings": ["Next options:"]
+  },
+  {
+    "prompt": "help me debug my API route",
+    "expected_intent": "help",
+    "expected_style": "standard",
+    "required_substrings": ["Next options:"]
+  },
+  {
+    "prompt": "The build failed and I cannot start the server",
+    "expected_intent": "troubleshooting",
+    "expected_style": "standard",
+    "required_substrings": ["Next options:"]
+  },
+  {
+    "prompt": "math: 2*(3+4)^2",
+    "expected_intent": "math",
+    "expected_style": "standard",
+    "required_substrings": ["Math result:", "Next options:"]
+  },
+  {
+    "prompt": "Thanks for the help",
+    "expected_intent": "thanks",
+    "expected_style": "standard",
+    "required_substrings": ["Next options:"]
+  },
+  {
+    "prompt": "hello there",
+    "expected_intent": "greeting",
+    "expected_style": "standard",
+    "required_substrings": ["Next options:"]
+  },
+  {
+    "prompt": "Explain the rollout plan",
+    "expected_intent": "general",
+    "expected_style": "concise",
+    "preferences": {
+      "response_style": "concise",
+      "depth": "deep",
+      "tone": "professional",
+      "retrieval_summary": true,
+      "retrieval_top_k": 8
+    },
+    "required_substrings": ["Next options:"]
+  }
+]

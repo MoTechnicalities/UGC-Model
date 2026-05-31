@@ -184,8 +184,15 @@ Chat behavior notes:
 - `POST /v1/chat/completions` uses the provided message history and responds with contextual conversation output.
 - Chat replies now include deterministic intent-aware phrasing (`greeting`, `identity`, `help`, `troubleshooting`, `math`, `general`) for more natural user interaction.
 - Chat replies support deterministic style adaptation (`concise` vs `standard`) based on user wording such as `brief` or `concise`.
+- `POST /v1/chat/completions` accepts optional `preferences` payload fields:
+	- `response_style`: `concise | standard`
+	- `depth`: `shallow | standard | deep`
+	- `tone`: `friendly | professional | direct`
+	- `retrieval_summary`: boolean toggle for natural-language evidence summary
+	- `retrieval_top_k`: retrieval evidence count cap for chat synthesis (`1..12`)
 - Chat responses include RWIF retrieval evidence when prompt terms match indexed bank content.
 - Retrieval metadata includes deterministic rewrite diagnostics (`rewritten_query`, rewrite reasons, and miss diagnostics when no hits are found).
+- Retrieval metadata now includes deterministic readability scoring under `csif_meta.retrieval.summary` (`readability_score`, `summary_quality`, `summary_text`) so high-match evidence remains readable.
 - You can request inline calculator solves from chat with `/math <expression>`, `math:<expression>`, or `calc:<expression>`.
 - Chat math metadata now includes deterministic status fields: `status`, `error_code`, and `error_message` for failure classification.
 - Chat responses also include a top-level `csif_meta` object with machine-readable context, retrieval matches, and optional math result details.

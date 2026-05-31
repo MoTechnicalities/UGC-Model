@@ -55,6 +55,25 @@ struct ChatMessage {
 struct ChatCompletionsRequest {
     model: Option<String>,
     messages: Vec<ChatMessage>,
+    preferences: Option<ChatPreferencesRequest>,
+}
+
+#[derive(Deserialize, Clone, Debug, Default)]
+struct ChatPreferencesRequest {
+    response_style: Option<String>,
+    depth: Option<String>,
+    tone: Option<String>,
+    retrieval_summary: Option<bool>,
+    retrieval_top_k: Option<usize>,
+}
+
+#[derive(Clone, Debug)]
+struct ChatPreferences {
+    response_style: &'static str,
+    depth: &'static str,
+    tone: &'static str,
+    retrieval_summary: bool,
+    retrieval_top_k: usize,
 }
 
 #[derive(Deserialize)]
@@ -2372,6 +2391,20 @@ fn looks_like_math_expression(text: &str) -> bool {
         return true;
     }
 
+    let has_digit = trimmed.chars().any(|c| c.is_ascii_digit());
+    let has_operator = trimmed
+        .chars()
+        .any(|c| matches!(c, '+' | '-' | '*' | '/' | '^' | '!' | '(' | ')' | '='));
+    let has_alpha = trimmed.chars().any(|c| c.is_ascii_alphabetic());
+
+    // Avoid classifying plain-language text as math if it lacks explicit math syntax.
+    if !has_digit && !has_operator {
+        return false;
+    }
+    if has_alpha && !has_operator && !trimmed.contains('(') {
+        return false;
+    }
+
     // Heuristic: allow direct calculator-style prompts such as "(2+3i)^2".
     trimmed.chars().all(|c| {
         c.is_ascii_alphanumeric()
@@ -2426,17 +2459,107 @@ fn prefers_concise_reply(prompt: &str) -> bool {
         || p.contains("tldr")
 }
 
-fn conversational_opening(intent: &str) -> &'static str {
-    match intent {
-        "greeting" => "Hey, great to connect. I am ready to help.",
-        "identity" => "I am UGC-Model, a deterministic assistant built on CSIF and RWIF.",
-        "thanks" => "You are welcome. Happy to keep going with you.",
-        "help" => "Absolutely. Tell me the outcome you want, and I will help you get there step by step.",
-        "troubleshooting" => {
-            "Thanks for flagging that. We can isolate the issue quickly with a focused check."
+fn normalize_response_style(value: Option<&str>, prompt: &str) -> &'static str {
+    match value
+        .map(|v| v.trim().to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("concise") | Some("brief") | Some("short") => "concise",
+        Some("standard") | Some("balanced") | Some("normal") => "standard",
+        _ => {
+            if prefers_concise_reply(prompt) {
+                "concise"
+            } else {
+                "standard"
+            }
         }
-        "math" => "Great, let us solve it deterministically.",
-        _ => "I am with you. Let us work through it clearly.",
+    }
+}
+
+fn normalize_depth(value: Option<&str>) -> &'static str {
+    match value
+        .map(|v| v.trim().to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("shallow") | Some("brief") => "shallow",
+        Some("deep") | Some("detailed") => "deep",
+        _ => "standard",
+    }
+}
+
+fn normalize_tone(value: Option<&str>) -> &'static str {
+    match value
+        .map(|v| v.trim().to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("professional") => "professional",
+        Some("direct") => "direct",
+        _ => "friendly",
+    }
+}
+
+fn resolve_chat_preferences(pref: Option<&ChatPreferencesRequest>, prompt: &str) -> ChatPreferences {
+    let requested_top_k = pref.and_then(|p| p.retrieval_top_k);
+    let response_style = normalize_response_style(pref.and_then(|p| p.response_style.as_deref()), prompt);
+    let depth = normalize_depth(pref.and_then(|p| p.depth.as_deref()));
+    let tone = normalize_tone(pref.and_then(|p| p.tone.as_deref()));
+
+    let default_top_k = match depth {
+        "deep" => 6,
+        "shallow" => 2,
+        _ => {
+            if response_style == "concise" {
+                2
+            } else {
+                3
+            }
+        }
+    };
+
+    ChatPreferences {
+        response_style,
+        depth,
+        tone,
+        retrieval_summary: pref.and_then(|p| p.retrieval_summary).unwrap_or(true),
+        retrieval_top_k: requested_top_k.unwrap_or(default_top_k).clamp(1, 12),
+    }
+}
+
+fn conversational_opening(intent: &str, tone: &str) -> &'static str {
+    match tone {
+        "professional" => match intent {
+            "greeting" => "Hello. I am ready to assist.",
+            "identity" => "I am UGC-Model, a deterministic assistant built on CSIF and RWIF.",
+            "thanks" => "You are welcome. I am available for the next task.",
+            "help" => "Please share your target outcome and I will provide a structured plan.",
+            "troubleshooting" => {
+                "Understood. We can isolate the issue with a deterministic troubleshooting pass."
+            }
+            "math" => "Acknowledged. I will solve it deterministically.",
+            _ => "Understood. I will provide a clear and structured response.",
+        },
+        "direct" => match intent {
+            "greeting" => "Ready.",
+            "identity" => "I am UGC-Model, deterministic and CSIF/RWIF-backed.",
+            "thanks" => "Anytime.",
+            "help" => "Share the goal and I will give exact steps.",
+            "troubleshooting" => "Let us isolate the fault quickly.",
+            "math" => "Let us solve it now.",
+            _ => "Proceeding with your request.",
+        },
+        _ => match intent {
+            "greeting" => "Hey, great to connect. I am ready to help.",
+            "identity" => "I am UGC-Model, a deterministic assistant built on CSIF and RWIF.",
+            "thanks" => "You are welcome. Happy to keep going with you.",
+            "help" => {
+                "Absolutely. Tell me the outcome you want, and I will help you get there step by step."
+            }
+            "troubleshooting" => {
+                "Thanks for flagging that. We can isolate the issue quickly with a focused check."
+            }
+            "math" => "Great, let us solve it deterministically.",
+            _ => "I am with you. Let us work through it clearly.",
+        },
     }
 }
 
@@ -2514,6 +2637,50 @@ fn capability_hint_text(concise: bool) -> &'static str {
     } else {
         "I can help across conversational guidance, deterministic math, RWIF-backed retrieval, and semantic disambiguation, then turn that into practical next actions."
     }
+}
+
+fn summarize_retrieval_readability(matches: &[Value], top_k: usize) -> Value {
+    if matches.is_empty() {
+        return json!({
+            "enabled": true,
+            "coverage": 0.0,
+            "mean_score": 0.0,
+            "readability_score": 1.0,
+            "summary_quality": "none",
+            "summary_text": "No indexed evidence matched this prompt.",
+        });
+    }
+
+    let score_sum = matches
+        .iter()
+        .filter_map(|m| m.get("score").and_then(Value::as_f64))
+        .sum::<f64>();
+    let mean_score = score_sum / matches.len() as f64;
+    let coverage = matches.len() as f64 / top_k.max(1) as f64;
+    let compactness_penalty = (matches.len().saturating_sub(3) as f64 * 0.08).min(0.35);
+    let readability_score = (0.62 * mean_score + 0.38 * coverage - compactness_penalty).clamp(0.0, 1.0);
+    let summary_quality = if readability_score >= 0.80 {
+        "high"
+    } else if readability_score >= 0.55 {
+        "medium"
+    } else {
+        "low"
+    };
+    let summary_text = format!(
+        "Evidence readability is {} (score {:.2}) across {} matches; top relations were compacted into a readable summary.",
+        summary_quality,
+        readability_score,
+        matches.len()
+    );
+
+    json!({
+        "enabled": true,
+        "coverage": coverage,
+        "mean_score": mean_score,
+        "readability_score": readability_score,
+        "summary_quality": summary_quality,
+        "summary_text": summary_text,
+    })
 }
 
 fn summarize_bank(bank: &Value) -> BankSummary {
@@ -9334,10 +9501,15 @@ fn retrieval_payload(state: &AppState, query: &str, top_k: usize) -> Value {
     })
 }
 
-fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Value) {
+fn build_chat_answer(
+    messages: &[ChatMessage],
+    state: &AppState,
+    requested_preferences: Option<&ChatPreferencesRequest>,
+) -> (String, Value) {
     let prompt = last_user_prompt(messages);
     let intent = detect_chat_intent(&prompt);
-    let concise = prefers_concise_reply(&prompt);
+    let preferences = resolve_chat_preferences(requested_preferences, &prompt);
+    let concise = preferences.response_style == "concise";
     let recent_user = recent_user_prompts(messages, 3);
     let context_items = recent_user
         .iter()
@@ -9364,10 +9536,19 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
     };
 
     let mut retrieval_matches = Vec::new();
+    let mut retrieval_summary = json!({
+        "enabled": false,
+        "coverage": 0.0,
+        "mean_score": 0.0,
+        "readability_score": 1.0,
+        "summary_quality": "none",
+        "summary_text": "Retrieval summary disabled.",
+    });
     let mut retrieval_meta = json!({
         "match_count": 0,
         "matches": [],
         "rewritten_query": prompt,
+        "summary": retrieval_summary,
         "miss_diagnostics": {
             "reason": "index_unloaded",
             "query_tokens": tokenize(&prompt),
@@ -9375,7 +9556,7 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
         }
     });
     let mut answer = String::new();
-    answer.push_str(conversational_opening(intent));
+    answer.push_str(conversational_opening(intent, preferences.tone));
     answer.push_str("\n\n");
 
     if let Some(context_bridge) = context_bridge_text(&context_items, concise) {
@@ -9387,7 +9568,7 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
 
     if let Some(index) = state.bank_index.as_ref() {
         let (rewritten_prompt, rewrite_reasons) = rewrite_retrieval_query(&prompt);
-        let hits = retrieve_from_index(index, &rewritten_prompt, 3);
+        let hits = retrieve_from_index(index, &rewritten_prompt, preferences.retrieval_top_k);
         let rewritten_tokens = tokenize(&rewritten_prompt);
         let missing_tokens = rewritten_tokens
             .iter()
@@ -9400,6 +9581,7 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
                 "match_count": 0,
                 "matches": [],
                 "rewritten_query": rewritten_prompt,
+                "summary": retrieval_summary,
                 "miss_diagnostics": {
                     "reason": if missing_tokens.len() == rewritten_tokens.len() {
                         "query_terms_absent_from_index"
@@ -9432,16 +9614,35 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
                     "target_node": e.target_node,
                     "searchable_text": e.searchable_text
                 }));
-                answer.push_str(&format!(
-                    "- {} -> {} (relation: {}, score: {})\n",
-                    e.source_node, e.target_node, e.relation, score
-                ));
+                if preferences.depth == "deep" {
+                    answer.push_str(&format!(
+                        "- {} -> {} (relation: {}, score: {}, crystal: {}, edge: {})\n",
+                        e.source_node, e.target_node, e.relation, score, e.crystal_id, e.edge_id
+                    ));
+                } else {
+                    answer.push_str(&format!(
+                        "- {} -> {} (relation: {}, score: {})\n",
+                        e.source_node, e.target_node, e.relation, score
+                    ));
+                }
             }
             answer.push('\n');
+            if preferences.retrieval_summary {
+                retrieval_summary = summarize_retrieval_readability(
+                    retrieval_matches.as_slice(),
+                    preferences.retrieval_top_k,
+                );
+                if let Some(summary_text) = retrieval_summary.get("summary_text").and_then(Value::as_str) {
+                    answer.push_str("Evidence summary: ");
+                    answer.push_str(summary_text);
+                    answer.push_str("\n\n");
+                }
+            }
             retrieval_meta = json!({
                 "match_count": retrieval_matches.len(),
                 "matches": retrieval_matches,
                 "rewritten_query": rewritten_prompt,
+                "summary": retrieval_summary,
                 "miss_diagnostics": {
                     "reason": "none",
                     "query_tokens": tokenize(&prompt),
@@ -9525,7 +9726,11 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
         "math": math_meta,
         "conversation": {
             "intent": intent,
-            "response_style": if concise { "concise" } else { "standard" },
+            "response_style": preferences.response_style,
+            "depth": preferences.depth,
+            "tone": preferences.tone,
+            "retrieval_summary": preferences.retrieval_summary,
+            "retrieval_top_k": preferences.retrieval_top_k,
             "suggestions": suggestions,
         }
     });
@@ -10017,7 +10222,7 @@ async fn chat_completions(
 
     let model = req.model.unwrap_or_else(|| OPENAI_MODEL_ID.to_string());
     let prompt = last_user_prompt(&req.messages);
-    let (answer, csif_meta) = build_chat_answer(&req.messages, &state);
+    let (answer, csif_meta) = build_chat_answer(&req.messages, &state, req.preferences.as_ref());
     let prompt_tokens = token_count(&prompt);
     let completion_tokens = token_count(&answer);
 
@@ -13648,7 +13853,7 @@ mod tests {
             content: Value::String("/math frob(1)".to_string()),
         }];
 
-        let (_answer, meta) = build_chat_answer(&messages, &state);
+        let (_answer, meta) = build_chat_answer(&messages, &state, None);
         assert_eq!(
             meta.get("math")
                 .and_then(|v| v.get("status"))
@@ -13675,7 +13880,7 @@ mod tests {
             content: Value::String("Who are you and what can you do?".to_string()),
         }];
 
-        let (answer, meta) = build_chat_answer(&messages, &state);
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
         assert!(answer.contains("I am UGC-Model"));
         assert!(answer.contains("Next options:"));
         assert_eq!(
@@ -13704,7 +13909,7 @@ mod tests {
             },
         ];
 
-        let (answer, meta) = build_chat_answer(&messages, &state);
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
         assert!(answer.contains("Context carryover:"));
         assert_eq!(
             meta.get("conversation")
@@ -13712,6 +13917,128 @@ mod tests {
                 .and_then(Value::as_str),
             Some("concise")
         );
+    }
+
+    #[test]
+    fn chat_preferences_override_style_depth_and_tone() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("help me map the best rollout path".to_string()),
+        }];
+        let prefs = ChatPreferencesRequest {
+            response_style: Some("standard".to_string()),
+            depth: Some("deep".to_string()),
+            tone: Some("professional".to_string()),
+            retrieval_summary: Some(true),
+            retrieval_top_k: Some(7),
+        };
+
+        let (answer, meta) = build_chat_answer(&messages, &state, Some(&prefs));
+        assert!(answer.starts_with("Please share your target outcome"));
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("response_style"))
+                .and_then(Value::as_str),
+            Some("standard")
+        );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("depth"))
+                .and_then(Value::as_str),
+            Some("deep")
+        );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("tone"))
+                .and_then(Value::as_str),
+            Some("professional")
+        );
+    }
+
+    #[test]
+    fn conversation_benchmark_prompt_set_contract() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("benchmarks")
+            .join("conversation_prompt_set_v1.json");
+        let fixture_text =
+            std::fs::read_to_string(&fixture_path).expect("conversation benchmark fixture should load");
+        let suite: Value = serde_json::from_str(&fixture_text).expect("fixture should be valid json");
+        let cases = suite
+            .as_array()
+            .expect("conversation benchmark fixture should be an array");
+        assert!(!cases.is_empty(), "conversation benchmark fixture should not be empty");
+
+        for case in cases {
+            let prompt = case
+                .get("prompt")
+                .and_then(Value::as_str)
+                .expect("benchmark case should include prompt");
+            let expected_intent = case
+                .get("expected_intent")
+                .and_then(Value::as_str)
+                .expect("benchmark case should include expected_intent");
+            let expected_style = case
+                .get("expected_style")
+                .and_then(Value::as_str)
+                .expect("benchmark case should include expected_style");
+
+            let preferences = case
+                .get("preferences")
+                .cloned()
+                .map(serde_json::from_value::<ChatPreferencesRequest>)
+                .transpose()
+                .expect("preferences object should deserialize when provided");
+
+            let messages = vec![ChatMessage {
+                role: "user".to_string(),
+                content: Value::String(prompt.to_string()),
+            }];
+            let (answer, meta) = build_chat_answer(&messages, &state, preferences.as_ref());
+
+            assert!(!answer.trim().is_empty(), "answer should not be empty for prompt: {prompt}");
+            assert!(answer.contains("Next options:"), "answer shape should include Next options for prompt: {prompt}");
+            assert_eq!(
+                meta.get("conversation")
+                    .and_then(|v| v.get("intent"))
+                    .and_then(Value::as_str),
+                Some(expected_intent),
+                "intent mismatch for prompt: {prompt}"
+            );
+            assert_eq!(
+                meta.get("conversation")
+                    .and_then(|v| v.get("response_style"))
+                    .and_then(Value::as_str),
+                Some(expected_style),
+                "response style mismatch for prompt: {prompt}"
+            );
+            assert!(
+                meta.get("conversation")
+                    .and_then(|v| v.get("suggestions"))
+                    .and_then(Value::as_array)
+                    .map(|a| !a.is_empty())
+                    .unwrap_or(false),
+                "conversation suggestions should be present for prompt: {prompt}"
+            );
+
+            if let Some(required) = case.get("required_substrings").and_then(Value::as_array) {
+                for token in required.iter().filter_map(Value::as_str) {
+                    assert!(
+                        answer.contains(token),
+                        "answer should contain required token '{token}' for prompt: {prompt}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]
