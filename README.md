@@ -1,6 +1,6 @@
-# CSIF-Agent v2 Rust CLI
+# UGC-Model
 
-This crate is the Rust implementation bootstrap for CSIF-Agent v2.
+This crate is the Rust implementation bootstrap for UGC-Model.
 
 Current commands:
 
@@ -439,13 +439,13 @@ curl -sS 'http://127.0.0.1:8080/v1/csif/disambiguation/trajectories?language=en&
 curl -sS 'http://127.0.0.1:8080/v1/csif/disambiguation/summary?language=en&token=light&limit=200'
 curl -sS http://127.0.0.1:8080/v1/chat/completions \
 	-H 'content-type: application/json' \
-	-d '{"model":"csif-agent-rust-v2","messages":[{"role":"user","content":"status"}]}'
+	-d '{"model":"ugc-model","messages":[{"role":"user","content":"status"}]}'
 curl -sS http://127.0.0.1:8080/v1/chat/completions \
 	-H 'content-type: application/json' \
-	-d '{"model":"csif-agent-rust-v2","messages":[{"role":"user","content":"hey"},{"role":"user","content":"/math (2+3i)^2 + conj(4-5i) + arg(1+i) + 5!"}]}'
+	-d '{"model":"ugc-model","messages":[{"role":"user","content":"hey"},{"role":"user","content":"/math (2+3i)^2 + conj(4-5i) + arg(1+i) + 5!"}]}'
 curl -sS http://127.0.0.1:8080/v1/embeddings \
 	-H 'content-type: application/json' \
-	-d '{"model":"csif-agent-rust-v2","input":"semantic status"}'
+	-d '{"model":"ugc-model","input":"semantic status"}'
 ```
 
 ## Test
