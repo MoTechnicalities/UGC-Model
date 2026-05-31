@@ -1,5 +1,7 @@
 # UGC-Model
 
+![UGC-Model Hero](assets/UGC-Model_Image.png)
+
 Unified Geometric Cognition (UGC) is a deterministic, auditable intelligence model
 built on CSIF (Crystal Structure Information Format) and RWIF (Resonant Wave
 Information Format).
