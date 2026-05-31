@@ -2393,14 +2393,126 @@ fn normalize_chat_math_candidate(prompt: &str) -> &str {
     trimmed
 }
 
-fn smalltalk_intro(prompt: &str) -> &'static str {
+fn detect_chat_intent(prompt: &str) -> &'static str {
     let p = prompt.to_ascii_lowercase();
     if p.contains("hello") || p.contains("hi") || p.contains("hey") {
-        "Hey. I am online and ready to chat."
+        "greeting"
     } else if p.contains("who are you") || p.contains("what are you") {
-        "I am CSIF-Agent Rust, running a deterministic local chat and retrieval stack."
+        "identity"
+    } else if p.contains("thank") {
+        "thanks"
+    } else if p.contains("help") || p.contains("how do i") || p.contains("how can i") {
+        "help"
+    } else if p.contains("not working")
+        || p.contains("failed")
+        || p.contains("failing")
+        || p.contains("cannot")
+        || p.contains("can't")
+    {
+        "troubleshooting"
+    } else if looks_like_math_expression(prompt) {
+        "math"
     } else {
-        "I am listening."
+        "general"
+    }
+}
+
+fn prefers_concise_reply(prompt: &str) -> bool {
+    let p = prompt.to_ascii_lowercase();
+    p.contains("brief")
+        || p.contains("concise")
+        || p.contains("short")
+        || p.contains("quick answer")
+        || p.contains("tldr")
+}
+
+fn conversational_opening(intent: &str) -> &'static str {
+    match intent {
+        "greeting" => "Hey, great to connect. I am ready to help.",
+        "identity" => "I am UGC-Model, a deterministic assistant built on CSIF and RWIF.",
+        "thanks" => "You are welcome. Happy to keep going with you.",
+        "help" => "Absolutely. Tell me the outcome you want, and I will help you get there step by step.",
+        "troubleshooting" => {
+            "Thanks for flagging that. We can isolate the issue quickly with a focused check."
+        }
+        "math" => "Great, let us solve it deterministically.",
+        _ => "I am with you. Let us work through it clearly.",
+    }
+}
+
+fn context_bridge_text(context_items: &[String], concise: bool) -> Option<String> {
+    if context_items.is_empty() {
+        return None;
+    }
+
+    if concise {
+        if let Some(last) = context_items.last() {
+            return Some(format!("Context carryover: you previously asked about '{}'.", last));
+        }
+        return None;
+    }
+
+    let sample = context_items
+        .iter()
+        .rev()
+        .take(2)
+        .cloned()
+        .collect::<Vec<_>>();
+    let summary = sample
+        .into_iter()
+        .rev()
+        .collect::<Vec<_>>()
+        .join(" | ");
+    Some(format!(
+        "Context carryover: I am tracking your recent thread: {}.",
+        summary
+    ))
+}
+
+fn follow_up_suggestions(
+    intent: &str,
+    has_retrieval_hits: bool,
+    has_math_result: bool,
+    concise: bool,
+) -> Vec<&'static str> {
+    let mut items = Vec::new();
+
+    match intent {
+        "help" | "troubleshooting" => {
+            items.push("Share your exact goal and I will produce a concrete execution plan.");
+            items.push("Paste a failing command, API payload, or output and I will debug it with you.");
+        }
+        "math" => {
+            items.push("Send another expression for a deterministic solve.");
+            items.push("Ask for geometric mode or angle-unit control if you want trace-aware trig behavior.");
+        }
+        _ => {
+            items.push("Ask for a concise answer or a deep walkthrough, and I will adapt.");
+        }
+    }
+
+    if has_retrieval_hits {
+        items.push("Ask me to summarize retrieval evidence into plain-language conclusions.");
+    } else {
+        items.push("If you load a RWIF bank index, I can cite evidence directly from your data.");
+    }
+
+    if has_math_result {
+        items.push("I can explain each step behind the computed result if you want the full reasoning path.");
+    }
+
+    if concise && items.len() > 2 {
+        items.truncate(2);
+    }
+
+    items
+}
+
+fn capability_hint_text(concise: bool) -> &'static str {
+    if concise {
+        "I can handle chat, math, retrieval, and semantic disambiguation in one flow."
+    } else {
+        "I can help across conversational guidance, deterministic math, RWIF-backed retrieval, and semantic disambiguation, then turn that into practical next actions."
     }
 }
 
@@ -9224,6 +9336,8 @@ fn retrieval_payload(state: &AppState, query: &str, top_k: usize) -> Value {
 
 fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Value) {
     let prompt = last_user_prompt(messages);
+    let intent = detect_chat_intent(&prompt);
+    let concise = prefers_concise_reply(&prompt);
     let recent_user = recent_user_prompts(messages, 3);
     let context_items = recent_user
         .iter()
@@ -9261,17 +9375,15 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
         }
     });
     let mut answer = String::new();
-    answer.push_str(smalltalk_intro(&prompt));
-    answer.push_str("\n");
+    answer.push_str(conversational_opening(intent));
+    answer.push_str("\n\n");
 
-    if !context_items.is_empty() {
-        answer.push_str("Conversation context:\n");
-        for item in &context_items {
-            answer.push_str("- ");
-            answer.push_str(item);
-            answer.push('\n');
-        }
+    if let Some(context_bridge) = context_bridge_text(&context_items, concise) {
+        answer.push_str(&context_bridge);
+        answer.push_str("\n\n");
     }
+
+    let mut has_retrieval_hits = false;
 
     if let Some(index) = state.bank_index.as_ref() {
         let (rewritten_prompt, rewrite_reasons) = rewrite_retrieval_query(&prompt);
@@ -9301,8 +9413,14 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
                     "rewrite_reasons": rewrite_reasons,
                 }
             });
+            if !concise {
+                answer.push_str(
+                    "I do not have matching indexed RWIF evidence for this prompt yet, but I can still help with direct reasoning.\n\n",
+                );
+            }
         } else {
-            answer.push_str("Retrieval evidence:\n");
+            has_retrieval_hits = true;
+            answer.push_str("I found matching evidence in your RWIF index:\n");
             for (entry_id, score) in hits {
                 let e = &index.entries[entry_id];
                 retrieval_matches.push(json!({
@@ -9315,10 +9433,11 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
                     "searchable_text": e.searchable_text
                 }));
                 answer.push_str(&format!(
-                    "- [{}] {} | crystal={} edge={} score={}\n",
-                    e.relation, e.searchable_text, e.crystal_id, e.edge_id, score
+                    "- {} -> {} (relation: {}, score: {})\n",
+                    e.source_node, e.target_node, e.relation, score
                 ));
             }
+            answer.push('\n');
             retrieval_meta = json!({
                 "match_count": retrieval_matches.len(),
                 "matches": retrieval_matches,
@@ -9333,9 +9452,14 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
                 }
             });
         }
+    } else if !concise {
+        answer.push_str(
+            "RWIF retrieval is currently offline because no bank index is loaded; I can still provide direct guidance.\n\n",
+        );
     }
 
     let mut math_meta = Value::Null;
+    let mut has_math_result = false;
     let math_candidate = normalize_chat_math_candidate(&prompt);
     if looks_like_math_expression(&prompt) {
         match evaluate_math_expression(math_candidate, state, MathOptions::default()) {
@@ -9349,10 +9473,11 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
                     "result_latex": payload.get("result_latex").cloned().unwrap_or(Value::Null),
                     "phase_signature": payload.get("phase_signature").cloned().unwrap_or(Value::Null)
                 });
+                has_math_result = true;
                 if let Some(result_latex) = payload.get("result_latex").and_then(Value::as_str) {
-                    answer.push_str("Math solve:\n");
+                    answer.push_str("Math result:\n");
                     answer.push_str(result_latex);
-                    answer.push('\n');
+                    answer.push_str("\n\n");
                 }
             }
             Err(e) => {
@@ -9366,16 +9491,26 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
                     "result_latex": Value::Null,
                     "phase_signature": Value::Null,
                 });
-                answer.push_str("Math evaluation failed:\n");
-                answer.push_str(code);
-                answer.push_str(": ");
+                answer.push_str("Math evaluation failed: ");
                 answer.push_str(&e);
-                answer.push('\n');
+                answer.push_str("\n");
+                answer.push_str("Try a valid function or expression and I will evaluate it deterministically.\n\n");
             }
         }
     }
 
-    answer.push_str("What do you want to explore next?");
+    if !has_retrieval_hits && !has_math_result {
+        answer.push_str(capability_hint_text(concise));
+        answer.push_str("\n\n");
+    }
+
+    let suggestions = follow_up_suggestions(intent, has_retrieval_hits, has_math_result, concise);
+    answer.push_str("Next options:\n");
+    for item in &suggestions {
+        answer.push_str("- ");
+        answer.push_str(item);
+        answer.push('\n');
+    }
 
     let meta = json!({
         "schema_version": "csif_chat_meta_v1",
@@ -9387,7 +9522,12 @@ fn build_chat_answer(messages: &[ChatMessage], state: &AppState) -> (String, Val
         },
         "bank": bank_meta,
         "retrieval": retrieval_meta,
-        "math": math_meta
+        "math": math_meta,
+        "conversation": {
+            "intent": intent,
+            "response_style": if concise { "concise" } else { "standard" },
+            "suggestions": suggestions,
+        }
     });
 
     (answer, meta)
@@ -13520,6 +13660,57 @@ mod tests {
                 .and_then(|v| v.get("error_code"))
                 .and_then(Value::as_str),
             Some("MATH_UNSUPPORTED_FUNCTION")
+        );
+    }
+
+    #[test]
+    fn chat_identity_prompt_reports_intent_and_friendly_intro() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("Who are you and what can you do?".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state);
+        assert!(answer.contains("I am UGC-Model"));
+        assert!(answer.contains("Next options:"));
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("intent"))
+                .and_then(Value::as_str),
+            Some("identity")
+        );
+    }
+
+    #[test]
+    fn chat_concise_prompt_sets_concise_response_style() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![
+            ChatMessage {
+                role: "user".to_string(),
+                content: Value::String("I am exploring your capabilities.".to_string()),
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: Value::String("Give me a brief answer on what you can do.".to_string()),
+            },
+        ];
+
+        let (answer, meta) = build_chat_answer(&messages, &state);
+        assert!(answer.contains("Context carryover:"));
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("response_style"))
+                .and_then(Value::as_str),
+            Some("concise")
         );
     }
 

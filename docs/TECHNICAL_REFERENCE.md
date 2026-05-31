@@ -182,11 +182,14 @@ OpenAI-compatible routes:
 Chat behavior notes:
 
 - `POST /v1/chat/completions` uses the provided message history and responds with contextual conversation output.
+- Chat replies now include deterministic intent-aware phrasing (`greeting`, `identity`, `help`, `troubleshooting`, `math`, `general`) for more natural user interaction.
+- Chat replies support deterministic style adaptation (`concise` vs `standard`) based on user wording such as `brief` or `concise`.
 - Chat responses include RWIF retrieval evidence when prompt terms match indexed bank content.
 - Retrieval metadata includes deterministic rewrite diagnostics (`rewritten_query`, rewrite reasons, and miss diagnostics when no hits are found).
 - You can request inline calculator solves from chat with `/math <expression>`, `math:<expression>`, or `calc:<expression>`.
 - Chat math metadata now includes deterministic status fields: `status`, `error_code`, and `error_message` for failure classification.
 - Chat responses also include a top-level `csif_meta` object with machine-readable context, retrieval matches, and optional math result details.
+- `csif_meta.conversation` exposes conversation intent, response style, and deterministic next-step suggestions for downstream clients.
 - `csif_meta.schema_version` is currently `csif_chat_meta_v1` for stable client-side parsing.
 
 Lexical disambiguation notes:
