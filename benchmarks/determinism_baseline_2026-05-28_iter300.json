@@ -1,0 +1,51 @@
+{
+  "artifact": "csif_determinism_baseline",
+  "captured_at": "2026-05-28",
+  "workspace": "CSIF-Guard/csif_agent_v2_rust",
+  "command": "cargo run -- benchmark-determinism --iterations 300",
+  "result": {
+    "schema_version": "csif_benchmark_determinism_v1",
+    "object": "csif.benchmark.determinism",
+    "deterministic": true,
+    "cases": [
+      {
+        "name": "math_eval",
+        "iterations": 300,
+        "deterministic_hash_stable": true,
+        "output_hash": 10587279347708657184,
+        "latency_ms": {
+          "p50": 0.21742699999999998,
+          "p95": 0.41229299999999997
+        }
+      },
+      {
+        "name": "retrieve",
+        "iterations": 300,
+        "deterministic_hash_stable": true,
+        "output_hash": 3284761029051198974,
+        "latency_ms": {
+          "p50": 0.024508,
+          "p95": 0.026393
+        }
+      },
+      {
+        "name": "disambiguate",
+        "iterations": 300,
+        "deterministic_hash_stable": true,
+        "output_hash": 1520981856070672743,
+        "latency_ms": {
+          "p50": 0.365983,
+          "p95": 0.409003
+        }
+      }
+    ]
+  },
+  "summary": {
+    "hash_stability": "3/3 cases stable",
+    "p95_latency_ms": {
+      "math_eval": 0.41229299999999997,
+      "retrieve": 0.026393,
+      "disambiguate": 0.409003
+    }
+  }
+}

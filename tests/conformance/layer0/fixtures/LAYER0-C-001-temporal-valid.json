@@ -1,0 +1,14 @@
+{
+  "layer0_version": "0.2",
+  "nodes": [
+    {"node_id": "event_birth", "node_type": "event", "label": "event_birth", "provenance": {"source": "fixture"}},
+    {"node_id": "event_walk", "node_type": "event", "label": "event_walk", "provenance": {"source": "fixture"}},
+    {"node_id": "event_rest", "node_type": "event", "label": "event_rest", "provenance": {"source": "fixture"}},
+    {"node_id": "interval_day", "node_type": "interval", "label": "interval_day", "provenance": {"source": "fixture"}}
+  ],
+  "edges": [
+    {"edge_id": "edge_1", "source_node": "event_birth", "relation": "before", "target_node": "event_walk", "confidence_band": 1.0, "provenance": {"source": "fixture"}},
+    {"edge_id": "edge_2", "source_node": "event_walk", "relation": "before", "target_node": "event_rest", "confidence_band": 1.0, "provenance": {"source": "fixture"}},
+    {"edge_id": "edge_3", "source_node": "event_birth", "relation": "occurs_in", "target_node": "interval_day", "confidence_band": 1.0, "provenance": {"source": "fixture"}}
+  ]
+}

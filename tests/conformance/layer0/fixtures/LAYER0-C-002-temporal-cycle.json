@@ -1,0 +1,13 @@
+{
+  "layer0_version": "0.2",
+  "nodes": [
+    {"node_id": "a", "node_type": "event", "label": "a", "provenance": {"source": "fixture"}},
+    {"node_id": "b", "node_type": "event", "label": "b", "provenance": {"source": "fixture"}},
+    {"node_id": "interval_t", "node_type": "interval", "label": "interval_t", "provenance": {"source": "fixture"}}
+  ],
+  "edges": [
+    {"edge_id": "edge_1", "source_node": "a", "relation": "before", "target_node": "b", "confidence_band": 1.0, "provenance": {"source": "fixture"}},
+    {"edge_id": "edge_2", "source_node": "b", "relation": "before", "target_node": "a", "confidence_band": 1.0, "provenance": {"source": "fixture"}},
+    {"edge_id": "edge_3", "source_node": "a", "relation": "occurs_in", "target_node": "interval_t", "confidence_band": 1.0, "provenance": {"source": "fixture"}}
+  ]
+}
