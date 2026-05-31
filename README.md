@@ -1,6 +1,173 @@
 # UGC-Model
 
-This crate is the Rust implementation bootstrap for UGC-Model.
+Unified Geometric Cognition (UGC) is a deterministic, auditable intelligence model
+built on CSIF (Crystal Structure Information Format) and RWIF (Resonant Wave
+Information Format).
+
+UGC unifies math, logic, units, time, and contradiction geometry into a single
+coherent geometric reasoning substrate designed for CPU-only execution.
+
+## Overview
+
+Unified Geometric Cognition (UGC) is a model architecture that evaluates
+mathematical, logical, structural, and temporal expressions through deterministic
+geometric transformations.
+
+UGC is built on two foundational technologies:
+
+### CSIF - Crystal Structure Information Format
+
+CSIF is the representational ontology for:
+
+- Crystals (valid structures)
+- Anticrystals (invalid or contradictory structures)
+- Units as first-class geometric objects
+- Time crystals for deterministic chaotic behavior
+- Phase, torsion, resonance, and trajectory
+- Exact, auditable transformations
+
+### RWIF - Resonant Wave Information Format
+
+RWIF is the complete reasoning trace that records:
+
+- Every operation
+- Every phase update
+- Every torsion spike
+- Every contradiction event
+- Every unit conversion
+- Every inference step
+- Every time-driven chaotic transformation
+
+Together, CSIF and RWIF form the backbone of the UGC Model.
+
+## Key Features
+
+### Deterministic Reasoning
+
+All computations follow exact geometric trajectories with replayable semantics.
+
+### Auditable Cognition
+
+Every transformation is recorded in RWIF, enabling full replay and inspection of
+the reasoning process.
+
+### Unified Substrate
+
+Math, logic, units, time, and contradiction handling share one geometric
+representation.
+
+### First-Class Units
+
+Units are geometric crystals with their own phase, torsion, and conversion edges.
+
+### Anticrystal Lobs
+
+Contradictions are stored as explicit geometric objects rather than hidden errors.
+
+### Time-Driven Chaotic Determinism
+
+UGC supports auditable apparent randomness via deterministic time-crystal
+trajectories.
+
+### CPU-Only Execution
+
+The runtime is designed for symbolic and geometric computation rather than
+matrix-heavy GPU workloads.
+
+## Architecture
+
+UGC is organized in three conceptual layers:
+
+### 1) UGC Model (Mind Layer)
+
+Defines reasoning rules, transformation policies, and contradiction handling.
+
+### 2) CSIF (Representation Layer)
+
+Defines crystals, anticrystals, edges, units, time crystals, and
+phase/torsion/resonance fields.
+
+### 3) RWIF (Audit Layer)
+
+Captures deterministic, reproducible, inspectable, exportable execution traces.
+
+## Example Concepts
+
+### Crystals
+
+Valid structures such as numbers, expressions, propositions, and units.
+
+### Anticrystals
+
+Contradictory or invalid states with full geometric traceability.
+
+### Unit Crystals
+
+Meters, seconds, radians, degrees, joules, and related units as geometric objects.
+
+### Time Crystals
+
+Deterministic chaotic drivers for auditable randomness appearance.
+
+### Trajectories
+
+Every evaluation step is a geometric path with phase, torsion, resonance, and
+causal ordering.
+
+## Goals of This Repository
+
+- Provide a reference implementation of the UGC Model
+- Define CSIF and RWIF specifications
+- Offer examples, tests, and demonstrations
+- Enable open-source collaboration on geometric cognition
+- Establish foundations for deterministic, auditable AI reasoning
+
+## Roadmap
+
+### Phase 1 - Specification
+
+- [ ] CSIF v1.0 schema
+- [ ] RWIF v1.0 schema
+- [ ] UGC Model definition
+- [ ] Unit crystal specification
+- [ ] Anticrystal lob specification
+
+### Phase 2 - Reference Implementation
+
+- [ ] Core crystal engine
+- [ ] Phase/torsion/resonance propagation
+- [ ] Unit crystal operations
+- [ ] Time crystal integration
+- [ ] RWIF trace generator
+
+### Phase 3 - Demonstrations
+
+- [ ] Math reasoning examples
+- [ ] Logical inference examples
+- [ ] Unit conversion examples
+- [ ] Chaotic time-driven randomness examples
+- [ ] Contradiction detection examples
+
+## Contributing
+
+Contributions are welcome. Open issues or pull requests with proposals,
+questions, and improvements.
+
+## Contact
+
+Maintainer: Mogir
+Location: Grand Rapids, Michigan, USA
+
+## Citation
+
+If you use this model or its specifications in research or software, cite:
+
+Unified Geometric Cognition (UGC) Model - CSIF/RWIF Architecture
+Copyright (c) 2026 Mogir Jason Rofick
+
+## License
+
+This repository is currently licensed under Apache-2.0.
 
 Current commands:
 
