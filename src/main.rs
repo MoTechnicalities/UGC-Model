@@ -63,6 +63,7 @@ struct ChatPreferencesRequest {
     response_style: Option<String>,
     depth: Option<String>,
     tone: Option<String>,
+    warmth_ceiling: Option<String>,
     retrieval_summary: Option<bool>,
     retrieval_top_k: Option<usize>,
 }
@@ -72,6 +73,7 @@ struct ChatPreferences {
     response_style: &'static str,
     depth: &'static str,
     tone: &'static str,
+    warmth_ceiling: &'static str,
     retrieval_summary: bool,
     retrieval_top_k: usize,
 }
@@ -2506,11 +2508,31 @@ fn normalize_tone(value: Option<&str>) -> &'static str {
     }
 }
 
+fn normalize_warmth_ceiling(value: Option<&str>) -> &'static str {
+    match value
+        .map(|v| v.trim().to_ascii_lowercase())
+        .as_deref()
+    {
+        Some("subtle") | Some("low") | Some("minimal") => "subtle",
+        Some("expressive") | Some("high") | Some("vivid") => "expressive",
+        Some("balanced") | Some("medium") | Some("normal") => "balanced",
+        _ => "balanced",
+    }
+}
+
+fn env_chat_greeting_warmth_ceiling() -> &'static str {
+    normalize_warmth_ceiling(std::env::var("CSIF_CHAT_GREETING_WARMTH_CEILING").ok().as_deref())
+}
+
 fn resolve_chat_preferences(pref: Option<&ChatPreferencesRequest>, prompt: &str) -> ChatPreferences {
     let requested_top_k = pref.and_then(|p| p.retrieval_top_k);
     let response_style = normalize_response_style(pref.and_then(|p| p.response_style.as_deref()), prompt);
     let depth = normalize_depth(pref.and_then(|p| p.depth.as_deref()));
     let tone = normalize_tone(pref.and_then(|p| p.tone.as_deref()));
+    let warmth_ceiling = normalize_warmth_ceiling(
+        pref.and_then(|p| p.warmth_ceiling.as_deref())
+            .or(Some(env_chat_greeting_warmth_ceiling())),
+    );
 
     let default_top_k = match depth {
         "deep" => 6,
@@ -2528,6 +2550,7 @@ fn resolve_chat_preferences(pref: Option<&ChatPreferencesRequest>, prompt: &str)
         response_style,
         depth,
         tone,
+        warmth_ceiling,
         retrieval_summary: pref.and_then(|p| p.retrieval_summary).unwrap_or(true),
         retrieval_top_k: requested_top_k.unwrap_or(default_top_k).clamp(1, 12),
     }
@@ -2648,25 +2671,25 @@ fn default_conversational_opening(intent: &str, tone: &str) -> &'static str {
     }
 }
 
-fn greeting_opening_variants(tone: &str) -> &'static [(&'static str, &'static str)] {
-    const FRIENDLY: [(&str, &str); 5] = [
-        ("friendly_g1", "Hey, great to connect. I am ready to help."),
-        ("friendly_g2", "Hi there. Glad you are here, let us build something useful."),
-        ("friendly_g3", "Hello. I am online and ready when you are."),
-        ("friendly_g4", "Hey. Good to see you. We can start anywhere you want."),
-        ("friendly_g5", "Hi. I am active and ready to jump in."),
+fn greeting_opening_variants(tone: &str) -> &'static [(&'static str, &'static str, &'static str)] {
+    const FRIENDLY: [(&str, &str, &str); 5] = [
+        ("friendly_g1", "Hey, great to connect. I am ready to help.", "balanced"),
+        ("friendly_g2", "Hi there. Glad you are here, let us build something useful.", "expressive"),
+        ("friendly_g3", "Hello. I am online and ready when you are.", "subtle"),
+        ("friendly_g4", "Hey. Good to see you. We can start anywhere you want.", "expressive"),
+        ("friendly_g5", "Hi. I am active and ready to jump in.", "subtle"),
     ];
-    const PROFESSIONAL: [(&str, &str); 4] = [
-        ("professional_g1", "Hello. I am ready to assist."),
-        ("professional_g2", "Greetings. I am prepared to help with your objective."),
-        ("professional_g3", "Hello. I am online and available for your next task."),
-        ("professional_g4", "Good day. I am ready for a structured working session."),
+    const PROFESSIONAL: [(&str, &str, &str); 4] = [
+        ("professional_g1", "Hello. I am ready to assist.", "subtle"),
+        ("professional_g2", "Greetings. I am prepared to help with your objective.", "balanced"),
+        ("professional_g3", "Hello. I am online and available for your next task.", "subtle"),
+        ("professional_g4", "Good day. I am ready for a structured working session.", "expressive"),
     ];
-    const DIRECT: [(&str, &str); 4] = [
-        ("direct_g1", "Ready."),
-        ("direct_g2", "Online. Send the task."),
-        ("direct_g3", "Active. What do you want to do first?"),
-        ("direct_g4", "Ready to execute. Share the target."),
+    const DIRECT: [(&str, &str, &str); 4] = [
+        ("direct_g1", "Ready.", "subtle"),
+        ("direct_g2", "Online. Send the task.", "subtle"),
+        ("direct_g3", "Active. What do you want to do first?", "balanced"),
+        ("direct_g4", "Ready to execute. Share the target.", "expressive"),
     ];
 
     match tone {
@@ -2676,9 +2699,39 @@ fn greeting_opening_variants(tone: &str) -> &'static [(&'static str, &'static st
     }
 }
 
+fn greeting_variant_rank(level: &str) -> u8 {
+    match level {
+        "subtle" => 1,
+        "balanced" => 2,
+        "expressive" => 3,
+        _ => 2,
+    }
+}
+
+fn greeting_variants_for_warmth(
+    tone: &str,
+    warmth_ceiling: &str,
+) -> Vec<(&'static str, &'static str)> {
+    let max_rank = greeting_variant_rank(warmth_ceiling);
+    let mut selected = greeting_opening_variants(tone)
+        .iter()
+        .filter(|(_, _, level)| greeting_variant_rank(level) <= max_rank)
+        .map(|(id, text, _)| (*id, *text))
+        .collect::<Vec<_>>();
+
+    if selected.is_empty() {
+        if let Some((id, text, _)) = greeting_opening_variants(tone).first() {
+            selected.push((*id, *text));
+        }
+    }
+
+    selected
+}
+
 fn conversational_opening(
     intent: &str,
     tone: &str,
+    warmth_ceiling: &str,
     time_crystal_context: Option<&ChatTimeCrystalContext>,
 ) -> (String, Value) {
     if intent != "greeting" {
@@ -2711,9 +2764,9 @@ fn conversational_opening(
         );
     };
 
-    let variants = greeting_opening_variants(tone);
+    let variants = greeting_variants_for_warmth(tone, warmth_ceiling);
     let (variant_id, opening_text, variant_index) =
-        select_time_crystal_variant("opening", variants, context);
+        select_time_crystal_variant("opening", variants.as_slice(), context);
 
     (
         opening_text.to_string(),
@@ -9893,8 +9946,12 @@ fn build_chat_answer(
             "rewritten_query_tokens": tokenize(&prompt),
         }
     });
-    let (opening_text, opening_randomness) =
-        conversational_opening(intent, preferences.tone, time_crystal_context.as_ref());
+    let (opening_text, opening_randomness) = conversational_opening(
+        intent,
+        preferences.tone,
+        preferences.warmth_ceiling,
+        time_crystal_context.as_ref(),
+    );
     let mut retrieval_fallback_randomness = json!({
         "enabled": false,
         "reason": "not_used",
@@ -10089,6 +10146,7 @@ fn build_chat_answer(
             "response_style": preferences.response_style,
             "depth": preferences.depth,
             "tone": preferences.tone,
+            "warmth_ceiling": preferences.warmth_ceiling,
             "opening_randomness": opening_randomness,
             "retrieval_fallback_randomness": retrieval_fallback_randomness,
             "next_options_randomness": next_options_randomness,
@@ -14390,6 +14448,7 @@ mod tests {
             response_style: Some("standard".to_string()),
             depth: Some("deep".to_string()),
             tone: Some("professional".to_string()),
+            warmth_ceiling: Some("subtle".to_string()),
             retrieval_summary: Some(true),
             retrieval_top_k: Some(7),
         };
@@ -14413,6 +14472,78 @@ mod tests {
                 .and_then(|v| v.get("tone"))
                 .and_then(Value::as_str),
             Some("professional")
+        );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("warmth_ceiling"))
+                .and_then(Value::as_str),
+            Some("subtle")
+        );
+    }
+
+    #[test]
+    fn chat_greeting_warmth_ceiling_env_is_applied() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("hello".to_string()),
+        }];
+
+        let (_answer, meta) = with_env_vars(
+            &[
+                ("CSIF_CHAT_TIME_CRYSTAL_OPENING_VARIATION", "true"),
+                ("CSIF_CHAT_GREETING_WARMTH_CEILING", "subtle"),
+                ("CSIF_TIME_CRYSTAL_T_NS", "1717171717000000000"),
+            ],
+            || build_chat_answer(&messages, &state, None),
+        );
+
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("warmth_ceiling"))
+                .and_then(Value::as_str),
+            Some("subtle")
+        );
+    }
+
+    #[test]
+    fn chat_greeting_warmth_ceiling_payload_overrides_env() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("hello".to_string()),
+        }];
+        let prefs = ChatPreferencesRequest {
+            response_style: None,
+            depth: None,
+            tone: Some("friendly".to_string()),
+            warmth_ceiling: Some("expressive".to_string()),
+            retrieval_summary: None,
+            retrieval_top_k: None,
+        };
+
+        let (_answer, meta) = with_env_vars(
+            &[
+                ("CSIF_CHAT_TIME_CRYSTAL_OPENING_VARIATION", "true"),
+                ("CSIF_CHAT_GREETING_WARMTH_CEILING", "subtle"),
+                ("CSIF_TIME_CRYSTAL_T_NS", "1717171717000000000"),
+            ],
+            || build_chat_answer(&messages, &state, Some(&prefs)),
+        );
+
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("warmth_ceiling"))
+                .and_then(Value::as_str),
+            Some("expressive")
         );
     }
 

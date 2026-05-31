@@ -193,11 +193,13 @@ Chat behavior notes:
   Each includes selected variant information and time-crystal fields when enabled.
 - Greeting variation controls:
 	- `CSIF_CHAT_TIME_CRYSTAL_OPENING_VARIATION` (default enabled; set `false` to disable)
+	- `CSIF_CHAT_GREETING_WARMTH_CEILING` (`subtle|balanced|expressive`, default `balanced`)
 	- `CSIF_TIME_CRYSTAL_T_NS` (optional fixed coordinate for deterministic replay)
 - `POST /v1/chat/completions` accepts optional `preferences` payload fields:
 	- `response_style`: `concise | standard`
 	- `depth`: `shallow | standard | deep`
 	- `tone`: `friendly | professional | direct`
+	- `warmth_ceiling`: `subtle | balanced | expressive` (caps greeting variation intensity)
 	- `retrieval_summary`: boolean toggle for natural-language evidence summary
 	- `retrieval_top_k`: retrieval evidence count cap for chat synthesis (`1..12`)
 - Chat responses include RWIF retrieval evidence when prompt terms match indexed bank content.
