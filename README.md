@@ -44,37 +44,56 @@ Together, CSIF and RWIF form the backbone of the UGC Model.
 
 ## Key Features
 
-### Deterministic Reasoning
+### OpenAI-Compatible API Surface
 
-All computations follow exact geometric trajectories with replayable semantics.
+Drop-in OpenAI-style routes (`/v1/models`, `/v1/chat/completions`,
+`/v1/embeddings`) plus deterministic CSIF-native endpoints for math,
+retrieval, disambiguation, simulation, and reconciliation.
 
-### Auditable Cognition
+### CLI-First Accessibility
 
-Every transformation is recorded in RWIF, enabling full replay and inspection of
-the reasoning process.
+Direct command workflows for validation, migration, indexing, deterministic
+math evaluation, benchmarking, and local OpenAI-compatible serving.
 
-### Unified Substrate
+### Deterministic Replay and Auditability
 
-Math, logic, units, time, and contradiction handling share one geometric
-representation.
+Core operations produce replay-stable outputs with explicit audit traces so
+results can be re-run and verified without ambiguity.
 
-### First-Class Units
+### Unified Geometric Reasoning Substrate
 
-Units are geometric crystals with their own phase, torsion, and conversion edges.
+Math, logic, units, time, contradiction geometry, and semantic disambiguation
+share one coherent CSIF/RWIF representation.
 
-### Anticrystal Lobs
+### Contradiction-Aware Governance
 
-Contradictions are stored as explicit geometric objects rather than hidden errors.
+Contradictions are first-class objects with explicit threshold signaling,
+propagation, and qualified outcomes rather than hidden failures.
 
-### Time-Driven Chaotic Determinism
+### Multilingual Lexical Disambiguation
 
-UGC supports auditable apparent randomness via deterministic time-crystal
-trajectories.
+Deterministic token-to-sense resolution across multiple languages with
+cross-language alias identity and pack-scoped lexicon evidence.
 
-### CPU-Only Execution
+### Frame-Aware Semantics and Conservation Checks
 
-The runtime is designed for symbolic and geometric computation rather than
-matrix-heavy GPU workloads.
+Optional frame transitions and conservation policies provide deterministic
+projection, admissibility checks, and explicit invariant-violation diagnostics.
+
+### Sandbox Simulation and Reconciliation
+
+Branch-level what-if simulation and winner-versus-loser reconciliation expose
+why a trajectory wins and which alternatives are rejected.
+
+### Trajectory Persistence and Health Metrics
+
+Append-only sense trajectory logs support measurable semantic health signals,
+including stability, contradiction rate, ambiguity entropy, and lobe drift.
+
+### CPU-First, No-GPU Dependency
+
+Designed for deterministic symbolic/geometric execution on standard CPU
+infrastructure without requiring matrix-heavy GPU inference pipelines.
 
 ## Architecture
 
