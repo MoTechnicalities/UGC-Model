@@ -2525,7 +2525,17 @@ fn resolve_chat_preferences(pref: Option<&ChatPreferencesRequest>, prompt: &str)
     }
 }
 
-fn conversational_opening(intent: &str, tone: &str) -> &'static str {
+fn emit_chat_time_crystal_opening_variation() -> bool {
+    match std::env::var("CSIF_CHAT_TIME_CRYSTAL_OPENING_VARIATION") {
+        Ok(raw) => {
+            let normalized = raw.trim().to_ascii_lowercase();
+            !matches!(normalized.as_str(), "0" | "false" | "no" | "off")
+        }
+        Err(_) => true,
+    }
+}
+
+fn default_conversational_opening(intent: &str, tone: &str) -> &'static str {
     match tone {
         "professional" => match intent {
             "greeting" => "Hello. I am ready to assist.",
@@ -2561,6 +2571,83 @@ fn conversational_opening(intent: &str, tone: &str) -> &'static str {
             _ => "I am with you. Let us work through it clearly.",
         },
     }
+}
+
+fn greeting_opening_variants(tone: &str) -> &'static [(&'static str, &'static str)] {
+    const FRIENDLY: [(&str, &str); 5] = [
+        ("friendly_g1", "Hey, great to connect. I am ready to help."),
+        ("friendly_g2", "Hi there. Glad you are here, let us build something useful."),
+        ("friendly_g3", "Hello. I am online and ready when you are."),
+        ("friendly_g4", "Hey. Good to see you. We can start anywhere you want."),
+        ("friendly_g5", "Hi. I am active and ready to jump in."),
+    ];
+    const PROFESSIONAL: [(&str, &str); 4] = [
+        ("professional_g1", "Hello. I am ready to assist."),
+        ("professional_g2", "Greetings. I am prepared to help with your objective."),
+        ("professional_g3", "Hello. I am online and available for your next task."),
+        ("professional_g4", "Good day. I am ready for a structured working session."),
+    ];
+    const DIRECT: [(&str, &str); 4] = [
+        ("direct_g1", "Ready."),
+        ("direct_g2", "Online. Send the task."),
+        ("direct_g3", "Active. What do you want to do first?"),
+        ("direct_g4", "Ready to execute. Share the target."),
+    ];
+
+    match tone {
+        "professional" => &PROFESSIONAL,
+        "direct" => &DIRECT,
+        _ => &FRIENDLY,
+    }
+}
+
+fn conversational_opening(intent: &str, tone: &str) -> (String, Value) {
+    if intent != "greeting" {
+        return (
+            default_conversational_opening(intent, tone).to_string(),
+            json!({
+                "enabled": false,
+                "reason": "non_greeting_intent"
+            }),
+        );
+    }
+
+    if !emit_chat_time_crystal_opening_variation() {
+        return (
+            default_conversational_opening(intent, tone).to_string(),
+            json!({
+                "enabled": false,
+                "reason": "disabled_by_env"
+            }),
+        );
+    }
+
+    let variants = greeting_opening_variants(tone);
+    let (t_ns, coordinate_source) = time_crystal_coordinate();
+    let cycle = 1_000_000_000_u128;
+    let phase_frac = (t_ns % cycle) as f64 / cycle as f64;
+    let phase_theta = wrap_to_pi(phase_frac * 2.0 * std::f64::consts::PI);
+    let torsion_norm = ((t_ns / 97) % 1000) as f64 / 1000.0;
+
+    let variant_index = (((t_ns / 97) ^ (t_ns % 7919)) as usize) % variants.len();
+    let (variant_id, opening_text) = variants[variant_index];
+
+    (
+        opening_text.to_string(),
+        json!({
+            "enabled": true,
+            "mode": "deterministic_time_crystal_greeting_variation",
+            "variant_id": variant_id,
+            "variant_index": variant_index,
+            "variant_count": variants.len(),
+            "time_crystal": {
+                "t_ns": t_ns,
+                "phase_theta": phase_theta,
+                "torsion_norm": torsion_norm,
+                "coordinate_source": coordinate_source,
+            }
+        }),
+    )
 }
 
 fn context_bridge_text(context_items: &[String], concise: bool) -> Option<String> {
@@ -9555,8 +9642,10 @@ fn build_chat_answer(
             "rewritten_query_tokens": tokenize(&prompt),
         }
     });
+    let (opening_text, opening_randomness) = conversational_opening(intent, preferences.tone);
+
     let mut answer = String::new();
-    answer.push_str(conversational_opening(intent, preferences.tone));
+    answer.push_str(&opening_text);
     answer.push_str("\n\n");
 
     if let Some(context_bridge) = context_bridge_text(&context_items, concise) {
@@ -9729,6 +9818,7 @@ fn build_chat_answer(
             "response_style": preferences.response_style,
             "depth": preferences.depth,
             "tone": preferences.tone,
+            "opening_randomness": opening_randomness,
             "retrieval_summary": preferences.retrieval_summary,
             "retrieval_top_k": preferences.retrieval_top_k,
             "suggestions": suggestions,
@@ -13916,6 +14006,75 @@ mod tests {
                 .and_then(|v| v.get("response_style"))
                 .and_then(Value::as_str),
             Some("concise")
+        );
+    }
+
+    #[test]
+    fn chat_greeting_uses_time_crystal_opening_variation_with_replay_override() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("hello".to_string()),
+        }];
+
+        let (_answer, meta) = with_env_vars(
+            &[
+                ("CSIF_CHAT_TIME_CRYSTAL_OPENING_VARIATION", "true"),
+                ("CSIF_TIME_CRYSTAL_T_NS", "1717171717000000000"),
+            ],
+            || build_chat_answer(&messages, &state, None),
+        );
+
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("opening_randomness"))
+                .and_then(|v| v.get("enabled")),
+            Some(&Value::Bool(true))
+        );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("opening_randomness"))
+                .and_then(|v| v.get("time_crystal"))
+                .and_then(|v| v.get("coordinate_source"))
+                .and_then(Value::as_str),
+            Some("env:CSIF_TIME_CRYSTAL_T_NS")
+        );
+    }
+
+    #[test]
+    fn chat_greeting_opening_variation_can_be_disabled() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("hello".to_string()),
+        }];
+
+        let (answer, meta) = with_env_vars(
+            &[("CSIF_CHAT_TIME_CRYSTAL_OPENING_VARIATION", "false")],
+            || build_chat_answer(&messages, &state, None),
+        );
+
+        assert!(answer.starts_with("Hey, great to connect. I am ready to help."));
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("opening_randomness"))
+                .and_then(|v| v.get("enabled")),
+            Some(&Value::Bool(false))
+        );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("opening_randomness"))
+                .and_then(|v| v.get("reason"))
+                .and_then(Value::as_str),
+            Some("disabled_by_env")
         );
     }
 

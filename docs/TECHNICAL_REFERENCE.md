@@ -184,6 +184,11 @@ Chat behavior notes:
 - `POST /v1/chat/completions` uses the provided message history and responds with contextual conversation output.
 - Chat replies now include deterministic intent-aware phrasing (`greeting`, `identity`, `help`, `troubleshooting`, `math`, `general`) for more natural user interaction.
 - Chat replies support deterministic style adaptation (`concise` vs `standard`) based on user wording such as `brief` or `concise`.
+- Greeting openings now support time-crystal-driven variant selection so introduction responses feel less repetitive while remaining auditable/replayable.
+- Conversation metadata includes `csif_meta.conversation.opening_randomness` with selected variant and time-crystal fields.
+- Greeting variation controls:
+	- `CSIF_CHAT_TIME_CRYSTAL_OPENING_VARIATION` (default enabled; set `false` to disable)
+	- `CSIF_TIME_CRYSTAL_T_NS` (optional fixed coordinate for deterministic replay)
 - `POST /v1/chat/completions` accepts optional `preferences` payload fields:
 	- `response_style`: `concise | standard`
 	- `depth`: `shallow | standard | deep`
