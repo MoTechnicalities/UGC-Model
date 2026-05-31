@@ -49,6 +49,19 @@ conformance, and implementation blueprints), see:
 
 - [Specification Disclosure Index](docs/specifications/README.md)
 
+## Specification Governance
+
+- Canonical specification source: this UGC-Model repository is the canonical
+	source for CSIF, RWIF, and Semantic Layer specification edits.
+- Downstream mirrors: CSIF-Guard may carry synchronized copies for operational
+	implementation reference, but canonical changes must originate here.
+- Sync versioning: every cross-repo spec sync should be tagged in commit
+	messages and release notes as `SPEC_SYNC_vYYYY.MM.DD.N` (for example,
+	`SPEC_SYNC_v2026.05.31.1`).
+- Sync scope: each sync must include an updated index/changelog summary listing
+	files synced, source commit hash, destination commit hash, and effective sync
+	version tag.
+
 ## Key Features
 
 ### OpenAI-Compatible API Surface
