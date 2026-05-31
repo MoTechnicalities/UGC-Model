@@ -76,6 +76,14 @@ struct ChatPreferences {
     retrieval_top_k: usize,
 }
 
+#[derive(Clone, Debug)]
+struct ChatTimeCrystalContext {
+    t_ns: u128,
+    phase_theta: f64,
+    torsion_norm: f64,
+    coordinate_source: String,
+}
+
 #[derive(Deserialize)]
 struct EmbeddingsRequest {
     model: Option<String>,
@@ -2535,6 +2543,73 @@ fn emit_chat_time_crystal_opening_variation() -> bool {
     }
 }
 
+fn build_chat_time_crystal_context() -> Option<ChatTimeCrystalContext> {
+    if !emit_chat_time_crystal_opening_variation() {
+        return None;
+    }
+
+    let (t_ns, coordinate_source) = time_crystal_coordinate();
+    let cycle = 1_000_000_000_u128;
+    let phase_frac = (t_ns % cycle) as f64 / cycle as f64;
+    let phase_theta = wrap_to_pi(phase_frac * 2.0 * std::f64::consts::PI);
+    let torsion_norm = ((t_ns / 97) % 1000) as f64 / 1000.0;
+
+    Some(ChatTimeCrystalContext {
+        t_ns,
+        phase_theta,
+        torsion_norm,
+        coordinate_source,
+    })
+}
+
+fn select_time_crystal_variant(
+    slot: &str,
+    variants: &[(&'static str, &'static str)],
+    context: &ChatTimeCrystalContext,
+) -> (&'static str, &'static str, usize) {
+    let seed = value_hash(&json!({
+        "slot": slot,
+        "t_ns": context.t_ns,
+        "phase_theta": context.phase_theta,
+        "torsion_norm": context.torsion_norm,
+    }));
+    let variant_index = (seed as usize) % variants.len();
+    let (variant_id, text) = variants[variant_index];
+    (variant_id, text, variant_index)
+}
+
+fn time_crystal_variant_meta(
+    enabled: bool,
+    reason: &str,
+    mode: &str,
+    variant_id: Option<&str>,
+    variant_index: Option<usize>,
+    variant_count: usize,
+    context: Option<&ChatTimeCrystalContext>,
+) -> Value {
+    if enabled {
+        json!({
+            "enabled": true,
+            "reason": reason,
+            "mode": mode,
+            "variant_id": variant_id,
+            "variant_index": variant_index,
+            "variant_count": variant_count,
+            "time_crystal": {
+                "t_ns": context.map(|c| c.t_ns),
+                "phase_theta": context.map(|c| c.phase_theta),
+                "torsion_norm": context.map(|c| c.torsion_norm),
+                "coordinate_source": context.map(|c| c.coordinate_source.clone()),
+            }
+        })
+    } else {
+        json!({
+            "enabled": false,
+            "reason": reason,
+        })
+    }
+}
+
 fn default_conversational_opening(intent: &str, tone: &str) -> &'static str {
     match tone {
         "professional" => match intent {
@@ -2601,53 +2676,227 @@ fn greeting_opening_variants(tone: &str) -> &'static [(&'static str, &'static st
     }
 }
 
-fn conversational_opening(intent: &str, tone: &str) -> (String, Value) {
+fn conversational_opening(
+    intent: &str,
+    tone: &str,
+    time_crystal_context: Option<&ChatTimeCrystalContext>,
+) -> (String, Value) {
     if intent != "greeting" {
         return (
             default_conversational_opening(intent, tone).to_string(),
-            json!({
-                "enabled": false,
-                "reason": "non_greeting_intent"
-            }),
+            time_crystal_variant_meta(
+                false,
+                "non_greeting_intent",
+                "deterministic_time_crystal_greeting_variation",
+                None,
+                None,
+                0,
+                None,
+            ),
         );
     }
 
-    if !emit_chat_time_crystal_opening_variation() {
+    let Some(context) = time_crystal_context else {
         return (
             default_conversational_opening(intent, tone).to_string(),
-            json!({
-                "enabled": false,
-                "reason": "disabled_by_env"
-            }),
+            time_crystal_variant_meta(
+                false,
+                "disabled_by_env",
+                "deterministic_time_crystal_greeting_variation",
+                None,
+                None,
+                0,
+                None,
+            ),
         );
-    }
+    };
 
     let variants = greeting_opening_variants(tone);
-    let (t_ns, coordinate_source) = time_crystal_coordinate();
-    let cycle = 1_000_000_000_u128;
-    let phase_frac = (t_ns % cycle) as f64 / cycle as f64;
-    let phase_theta = wrap_to_pi(phase_frac * 2.0 * std::f64::consts::PI);
-    let torsion_norm = ((t_ns / 97) % 1000) as f64 / 1000.0;
-
-    let variant_index = (((t_ns / 97) ^ (t_ns % 7919)) as usize) % variants.len();
-    let (variant_id, opening_text) = variants[variant_index];
+    let (variant_id, opening_text, variant_index) =
+        select_time_crystal_variant("opening", variants, context);
 
     (
         opening_text.to_string(),
-        json!({
-            "enabled": true,
-            "mode": "deterministic_time_crystal_greeting_variation",
-            "variant_id": variant_id,
-            "variant_index": variant_index,
-            "variant_count": variants.len(),
-            "time_crystal": {
-                "t_ns": t_ns,
-                "phase_theta": phase_theta,
-                "torsion_norm": torsion_norm,
-                "coordinate_source": coordinate_source,
-            }
-        }),
+        time_crystal_variant_meta(
+            true,
+            "applied",
+            "deterministic_time_crystal_greeting_variation",
+            Some(variant_id),
+            Some(variant_index),
+            variants.len(),
+            Some(context),
+        ),
     )
+}
+
+fn retrieval_fallback_variants(kind: &str, tone: &str, concise: bool) -> &'static [(&'static str, &'static str)] {
+    match (kind, tone, concise) {
+        ("no_index_loaded", "professional", _) => &[
+            (
+                "no_index_prof_1",
+                "RWIF retrieval is currently offline because no bank index is loaded; I can still provide direct guidance.",
+            ),
+            (
+                "no_index_prof_2",
+                "No RWIF index is loaded yet, so retrieval evidence is unavailable; I can continue with direct deterministic guidance.",
+            ),
+        ],
+        ("no_index_loaded", "direct", _) => &[
+            (
+                "no_index_direct_1",
+                "No RWIF bank index is loaded right now. I can still guide directly.",
+            ),
+            (
+                "no_index_direct_2",
+                "Retrieval is offline until a RWIF index is loaded. Direct guidance is still available.",
+            ),
+        ],
+        ("no_index_loaded", _, true) => &[
+            (
+                "no_index_friendly_concise_1",
+                "No RWIF bank index is loaded yet; I can still guide directly.",
+            ),
+            (
+                "no_index_friendly_concise_2",
+                "RWIF retrieval is offline right now, but direct help is still available.",
+            ),
+        ],
+        ("no_index_loaded", _, false) => &[
+            (
+                "no_index_friendly_1",
+                "RWIF retrieval is currently offline because no bank index is loaded; I can still provide direct guidance.",
+            ),
+            (
+                "no_index_friendly_2",
+                "I do not have a loaded RWIF index yet, so retrieval evidence is offline, but I can still help with direct reasoning.",
+            ),
+        ],
+        ("no_match_hits", "professional", _) => &[
+            (
+                "no_match_prof_1",
+                "I could not find matching indexed RWIF facts for that prompt.",
+            ),
+            (
+                "no_match_prof_2",
+                "Indexed RWIF retrieval returned no matching evidence for that prompt.",
+            ),
+        ],
+        ("no_match_hits", "direct", _) => &[
+            (
+                "no_match_direct_1",
+                "No matching RWIF facts were found for that prompt.",
+            ),
+            (
+                "no_match_direct_2",
+                "No indexed evidence matched that prompt.",
+            ),
+        ],
+        ("no_match_hits", _, _) => &[
+            (
+                "no_match_friendly_1",
+                "I could not find matching indexed RWIF facts for that prompt.",
+            ),
+            (
+                "no_match_friendly_2",
+                "I checked the current RWIF index and did not find matching evidence for that prompt.",
+            ),
+        ],
+        _ => &[("fallback_default", "I can still continue with deterministic guidance.")],
+    }
+}
+
+fn retrieval_fallback_text(
+    kind: &str,
+    tone: &str,
+    concise: bool,
+    time_crystal_context: Option<&ChatTimeCrystalContext>,
+) -> (String, Value) {
+    let variants = retrieval_fallback_variants(kind, tone, concise);
+    if let Some(context) = time_crystal_context {
+        let (variant_id, text, variant_index) =
+            select_time_crystal_variant(&format!("retrieval_fallback:{}", kind), variants, context);
+        (
+            text.to_string(),
+            time_crystal_variant_meta(
+                true,
+                "applied",
+                "deterministic_time_crystal_retrieval_fallback_variation",
+                Some(variant_id),
+                Some(variant_index),
+                variants.len(),
+                Some(context),
+            ),
+        )
+    } else {
+        (
+            variants[0].1.to_string(),
+            time_crystal_variant_meta(
+                false,
+                "disabled_by_env",
+                "deterministic_time_crystal_retrieval_fallback_variation",
+                None,
+                None,
+                variants.len(),
+                None,
+            ),
+        )
+    }
+}
+
+fn next_options_heading_variants(tone: &str) -> &'static [(&'static str, &'static str)] {
+    match tone {
+        "professional" => &[
+            ("next_prof_1", "Next options:"),
+            ("next_prof_2", "Next options: evaluate these paths."),
+            ("next_prof_3", "Next options: continue this session with one of these."),
+        ],
+        "direct" => &[
+            ("next_direct_1", "Next options:"),
+            ("next_direct_2", "Next options: execute one of these now."),
+            ("next_direct_3", "Next options: pick a direction now."),
+        ],
+        _ => &[
+            ("next_friendly_1", "Next options:"),
+            ("next_friendly_2", "Next options: choose whichever feels best."),
+            ("next_friendly_3", "Next options: keep momentum with one of these."),
+        ],
+    }
+}
+
+fn next_options_heading(
+    tone: &str,
+    time_crystal_context: Option<&ChatTimeCrystalContext>,
+) -> (String, Value) {
+    let variants = next_options_heading_variants(tone);
+    if let Some(context) = time_crystal_context {
+        let (variant_id, text, variant_index) =
+            select_time_crystal_variant("next_options_heading", variants, context);
+        (
+            text.to_string(),
+            time_crystal_variant_meta(
+                true,
+                "applied",
+                "deterministic_time_crystal_next_options_variation",
+                Some(variant_id),
+                Some(variant_index),
+                variants.len(),
+                Some(context),
+            ),
+        )
+    } else {
+        (
+            "Next options:".to_string(),
+            time_crystal_variant_meta(
+                false,
+                "disabled_by_env",
+                "deterministic_time_crystal_next_options_variation",
+                None,
+                None,
+                variants.len(),
+                None,
+            ),
+        )
+    }
 }
 
 fn context_bridge_text(context_items: &[String], concise: bool) -> Option<String> {
@@ -9622,6 +9871,8 @@ fn build_chat_answer(
         })
     };
 
+    let time_crystal_context = build_chat_time_crystal_context();
+
     let mut retrieval_matches = Vec::new();
     let mut retrieval_summary = json!({
         "enabled": false,
@@ -9642,7 +9893,12 @@ fn build_chat_answer(
             "rewritten_query_tokens": tokenize(&prompt),
         }
     });
-    let (opening_text, opening_randomness) = conversational_opening(intent, preferences.tone);
+    let (opening_text, opening_randomness) =
+        conversational_opening(intent, preferences.tone, time_crystal_context.as_ref());
+    let mut retrieval_fallback_randomness = json!({
+        "enabled": false,
+        "reason": "not_used",
+    });
 
     let mut answer = String::new();
     answer.push_str(&opening_text);
@@ -9665,7 +9921,15 @@ fn build_chat_answer(
             .cloned()
             .collect::<Vec<_>>();
         if hits.is_empty() {
-            answer.push_str("I could not find matching indexed RWIF facts for that prompt.\n");
+            let (fallback_line, fallback_randomness) = retrieval_fallback_text(
+                "no_match_hits",
+                preferences.tone,
+                concise,
+                time_crystal_context.as_ref(),
+            );
+            retrieval_fallback_randomness = fallback_randomness;
+            answer.push_str(&fallback_line);
+            answer.push('\n');
             retrieval_meta = json!({
                 "match_count": 0,
                 "matches": [],
@@ -9685,9 +9949,7 @@ fn build_chat_answer(
                 }
             });
             if !concise {
-                answer.push_str(
-                    "I do not have matching indexed RWIF evidence for this prompt yet, but I can still help with direct reasoning.\n\n",
-                );
+                answer.push_str("I can still help with direct reasoning.\n\n");
             }
         } else {
             has_retrieval_hits = true;
@@ -9743,9 +10005,15 @@ fn build_chat_answer(
             });
         }
     } else if !concise {
-        answer.push_str(
-            "RWIF retrieval is currently offline because no bank index is loaded; I can still provide direct guidance.\n\n",
+        let (fallback_line, fallback_randomness) = retrieval_fallback_text(
+            "no_index_loaded",
+            preferences.tone,
+            concise,
+            time_crystal_context.as_ref(),
         );
+        retrieval_fallback_randomness = fallback_randomness;
+        answer.push_str(&fallback_line);
+        answer.push_str("\n\n");
     }
 
     let mut math_meta = Value::Null;
@@ -9795,7 +10063,10 @@ fn build_chat_answer(
     }
 
     let suggestions = follow_up_suggestions(intent, has_retrieval_hits, has_math_result, concise);
-    answer.push_str("Next options:\n");
+    let (next_options_heading_text, next_options_randomness) =
+        next_options_heading(preferences.tone, time_crystal_context.as_ref());
+    answer.push_str(&next_options_heading_text);
+    answer.push('\n');
     for item in &suggestions {
         answer.push_str("- ");
         answer.push_str(item);
@@ -9819,6 +10090,8 @@ fn build_chat_answer(
             "depth": preferences.depth,
             "tone": preferences.tone,
             "opening_randomness": opening_randomness,
+            "retrieval_fallback_randomness": retrieval_fallback_randomness,
+            "next_options_randomness": next_options_randomness,
             "retrieval_summary": preferences.retrieval_summary,
             "retrieval_top_k": preferences.retrieval_top_k,
             "suggestions": suggestions,
@@ -14043,6 +14316,18 @@ mod tests {
                 .and_then(Value::as_str),
             Some("env:CSIF_TIME_CRYSTAL_T_NS")
         );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("retrieval_fallback_randomness"))
+                .and_then(|v| v.get("enabled")),
+            Some(&Value::Bool(true))
+        );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("next_options_randomness"))
+                .and_then(|v| v.get("enabled")),
+            Some(&Value::Bool(true))
+        );
     }
 
     #[test]
@@ -14075,6 +14360,18 @@ mod tests {
                 .and_then(|v| v.get("reason"))
                 .and_then(Value::as_str),
             Some("disabled_by_env")
+        );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("retrieval_fallback_randomness"))
+                .and_then(|v| v.get("enabled")),
+            Some(&Value::Bool(false))
+        );
+        assert_eq!(
+            meta.get("conversation")
+                .and_then(|v| v.get("next_options_randomness"))
+                .and_then(|v| v.get("enabled")),
+            Some(&Value::Bool(false))
         );
     }
 

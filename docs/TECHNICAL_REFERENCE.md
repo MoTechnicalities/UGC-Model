@@ -185,7 +185,12 @@ Chat behavior notes:
 - Chat replies now include deterministic intent-aware phrasing (`greeting`, `identity`, `help`, `troubleshooting`, `math`, `general`) for more natural user interaction.
 - Chat replies support deterministic style adaptation (`concise` vs `standard`) based on user wording such as `brief` or `concise`.
 - Greeting openings now support time-crystal-driven variant selection so introduction responses feel less repetitive while remaining auditable/replayable.
-- Conversation metadata includes `csif_meta.conversation.opening_randomness` with selected variant and time-crystal fields.
+- The same time-crystal variation pattern now applies to the no-retrieval fallback sentence and the closing `Next options` heading.
+- Conversation metadata includes:
+	- `csif_meta.conversation.opening_randomness`
+	- `csif_meta.conversation.retrieval_fallback_randomness`
+	- `csif_meta.conversation.next_options_randomness`
+  Each includes selected variant information and time-crystal fields when enabled.
 - Greeting variation controls:
 	- `CSIF_CHAT_TIME_CRYSTAL_OPENING_VARIATION` (default enabled; set `false` to disable)
 	- `CSIF_TIME_CRYSTAL_T_NS` (optional fixed coordinate for deterministic replay)
