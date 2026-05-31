@@ -300,8 +300,8 @@ keys and conformance test IDs.
 
 Source spec anchors:
 
-- Logic profile: [CSIF_V2_ENGINE_SPEC.md](../CSIF_V2_ENGINE_SPEC.md#19-logic-crystal-profile-draft-contract)
-- Conformance appendix: [CSIF_V2_CONFORMANCE_TEST_SPEC.md](../CSIF_V2_CONFORMANCE_TEST_SPEC.md#appendix-b-l5-logic-crystal-profile-tests)
+- Logic profile: [CSIF_V2_ENGINE_SPEC.md](docs/specifications/csif/CSIF_V2_ENGINE_SPEC.md#19-logic-crystal-profile-draft-contract)
+- Conformance appendix: [CSIF_V2_CONFORMANCE_TEST_SPEC.md](docs/specifications/conformance/CSIF_V2_CONFORMANCE_TEST_SPEC.md#appendix-b-l5-logic-crystal-profile-tests)
 
 Build gate recommendation:
 

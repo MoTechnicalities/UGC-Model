@@ -2,7 +2,7 @@
 
 This document defines a clean, implementation-ready CSIF v2 engine contract for deterministic, auditable phase-geometric reasoning.
 
-It is designed to pair with RWIF v2 storage semantics in [RWIF_V2_FIELD_SPEC.md](RWIF_V2_FIELD_SPEC.md).
+It is designed to pair with RWIF v2 storage semantics in [RWIF_V2_FIELD_SPEC.md](../rwif/RWIF_V2_FIELD_SPEC.md).
 
 ## 1. Purpose
 

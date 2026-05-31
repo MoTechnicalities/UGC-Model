@@ -1,0 +1,46 @@
+{
+  "bank_id": "rwif_bank_v1_sample",
+  "bank_label": "sample_v1",
+  "lobe": "English",
+  "unknown_bank_field": "must_stay",
+  "crystals": [
+    {
+      "crystal_id": "c1",
+      "crystal_label": "sample_crystal",
+      "domain": "demo",
+      "lobe": "English",
+      "frozen": false,
+      "nodes": [],
+      "edges": [
+        {
+          "edge_id": "e1",
+          "source_node": "n1",
+          "relation": "is_a",
+          "target_node": "n2",
+          "lobe": "English",
+          "reinforcing": true,
+          "base_phase": 0.0,
+          "confidence_band": 0.04,
+          "phase_trajectory": [
+            {
+              "timestamp": "2026-05-27T12:00:00Z",
+              "phase": 0.5236,
+              "confidence_band": 0.04,
+              "drift_delta": 0.0036,
+              "event_type": "crystallization",
+              "source": {
+                "type": "consensus_gate"
+              }
+            }
+          ],
+          "provenance": {
+            "source": "fixture"
+          },
+          "unknown_edge_field": "must_stay"
+        }
+      ],
+      "version_history": [],
+      "stability_score": 1.0
+    }
+  ]
+}

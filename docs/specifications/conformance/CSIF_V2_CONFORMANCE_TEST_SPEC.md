@@ -1,8 +1,8 @@
 # CSIF v2 Conformance Test Specification
 
 This document defines executable conformance tests for:
-- [CSIF_V2_ENGINE_SPEC.md](CSIF_V2_ENGINE_SPEC.md)
-- [RWIF_V2_FIELD_SPEC.md](RWIF_V2_FIELD_SPEC.md)
+- [CSIF_V2_ENGINE_SPEC.md](../csif/CSIF_V2_ENGINE_SPEC.md)
+- [RWIF_V2_FIELD_SPEC.md](../rwif/RWIF_V2_FIELD_SPEC.md)
 
 It includes required core tests and optional experimental profile tests.
 

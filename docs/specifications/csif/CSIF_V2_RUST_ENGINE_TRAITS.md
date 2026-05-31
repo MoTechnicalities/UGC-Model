@@ -4,7 +4,7 @@ This document provides concrete Rust trait/interface definitions for implementin
 
 Spec alignment:
 - [CSIF_V2_ENGINE_SPEC.md](CSIF_V2_ENGINE_SPEC.md)
-- [RWIF_V2_FIELD_SPEC.md](RWIF_V2_FIELD_SPEC.md)
+- [RWIF_V2_FIELD_SPEC.md](../rwif/RWIF_V2_FIELD_SPEC.md)
 
 ## 1. Design Goals
 

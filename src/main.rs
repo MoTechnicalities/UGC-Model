@@ -19,7 +19,7 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 const RWIF_SCHEMA_VERSION: &str = "RWIF_V2";
 const RWIF_EDGE_SCHEMA_VERSION: &str = "RWIF_EDGE_V2";
 const RWIF_EVENT_SCHEMA_VERSION: &str = "RWIF_EVENT_V2";
-const OPENAI_MODEL_ID: &str = "csif-agent-rust-v2";
+const OPENAI_MODEL_ID: &str = "ugc-model";
 const EMBEDDING_DIM: usize = 64;
 
 #[derive(Clone, Debug)]
@@ -10701,7 +10701,16 @@ fn canonicalize_json_value(value: &Value) -> Value {
             Value::Object(canonical)
         }
         Value::Array(arr) => {
-            Value::Array(arr.iter().map(canonicalize_json_value).collect::<Vec<_>>())
+            let mut normalized = arr
+                .iter()
+                .map(canonicalize_json_value)
+                .collect::<Vec<_>>();
+            normalized.sort_by(|a, b| {
+                let sa = serde_json::to_string(a).unwrap_or_default();
+                let sb = serde_json::to_string(b).unwrap_or_default();
+                sa.cmp(&sb)
+            });
+            Value::Array(normalized)
         }
         _ => value.clone(),
     }

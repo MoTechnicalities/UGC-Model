@@ -1,6 +1,6 @@
 # RWIF v2 Field Specification
 
-This document formalizes a backward-compatible RWIF v2 extension for CSIF-Guard.
+This document formalizes a backward-compatible RWIF v2 extension for UGC-Model.
 
 Goals:
 - Preserve RWIF v1 compatibility.

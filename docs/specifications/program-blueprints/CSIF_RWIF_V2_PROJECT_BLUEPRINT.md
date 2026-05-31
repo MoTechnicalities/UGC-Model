@@ -3,8 +3,8 @@
 This document defines a practical, end-to-end blueprint for building an accomplished project using CSIF v2 (engine/runtime contract) and RWIF v2 (storage/audit contract) together.
 
 Related specs:
-- [CSIF_V2_ENGINE_SPEC.md](CSIF_V2_ENGINE_SPEC.md)
-- [RWIF_V2_FIELD_SPEC.md](RWIF_V2_FIELD_SPEC.md)
+- [CSIF_V2_ENGINE_SPEC.md](../csif/CSIF_V2_ENGINE_SPEC.md)
+- [RWIF_V2_FIELD_SPEC.md](../rwif/RWIF_V2_FIELD_SPEC.md)
 
 ## 1. Target Outcome
 
@@ -128,8 +128,8 @@ Deliverable:
 A project is considered accomplished when all are true:
 
 1. Spec alignment:
-- implementation matches [CSIF_V2_ENGINE_SPEC.md](CSIF_V2_ENGINE_SPEC.md)
-- persistence matches [RWIF_V2_FIELD_SPEC.md](RWIF_V2_FIELD_SPEC.md)
+- implementation matches [CSIF_V2_ENGINE_SPEC.md](../csif/CSIF_V2_ENGINE_SPEC.md)
+- persistence matches [RWIF_V2_FIELD_SPEC.md](../rwif/RWIF_V2_FIELD_SPEC.md)
 
 2. Compatibility:
 - v1 RWIF loads without data loss
@@ -175,8 +175,8 @@ A project is considered accomplished when all are true:
 ## 7. Documentation Package for Completion
 
 For a complete handoff, keep these documents together:
-- [CSIF_V2_ENGINE_SPEC.md](CSIF_V2_ENGINE_SPEC.md)
-- [RWIF_V2_FIELD_SPEC.md](RWIF_V2_FIELD_SPEC.md)
+- [CSIF_V2_ENGINE_SPEC.md](../csif/CSIF_V2_ENGINE_SPEC.md)
+- [RWIF_V2_FIELD_SPEC.md](../rwif/RWIF_V2_FIELD_SPEC.md)
 - this blueprint
 - migration report
 - qualification report

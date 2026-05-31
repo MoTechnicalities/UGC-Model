@@ -6,8 +6,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("crate should live under repo root")
         .to_path_buf()
 }
 

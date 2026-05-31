@@ -3,55 +3,49 @@
 This is a practical one-page guide to implement and validate CSIF v2 + RWIF v2 in this repository.
 
 Spec references:
-- [CSIF_V2_ENGINE_SPEC.md](CSIF_V2_ENGINE_SPEC.md)
-- [RWIF_V2_FIELD_SPEC.md](RWIF_V2_FIELD_SPEC.md)
+- [CSIF_V2_ENGINE_SPEC.md](../csif/CSIF_V2_ENGINE_SPEC.md)
+- [RWIF_V2_FIELD_SPEC.md](../rwif/RWIF_V2_FIELD_SPEC.md)
 - [CSIF_RWIF_V2_PROJECT_BLUEPRINT.md](CSIF_RWIF_V2_PROJECT_BLUEPRINT.md)
 
 ## 1. Where Things Live
 
-- RWIF runtime and migration helpers: [storage/rwif.py](storage/rwif.py)
-- RWIF migration CLI: [scripts/migrate_rwif_v2.py](scripts/migrate_rwif_v2.py)
-- Demo runtime entrypoint: [demo_firewall.py](demo_firewall.py)
-- Core graph mechanics: [engine/phase_graph.py](engine/phase_graph.py)
-- Baseline tests: [tests/test_play_loop.py](tests/test_play_loop.py)
+- Rust runtime and CLI entrypoint: [src/main.rs](../../../src/main.rs)
+- Cargo project manifest: [Cargo.toml](../../../Cargo.toml)
+- CLI conformance tests: [tests/cli_roundtrip.rs](../../../tests/cli_roundtrip.rs)
+- Layer 0 CLI tests: [tests/layer0_cli.rs](../../../tests/layer0_cli.rs)
+- Conformance fixtures: [tests/conformance](../../../tests/conformance)
 
 ## 2. Environment Sanity
 
 From repo root:
 
 ```bash
-/bin/python3 -m py_compile storage/rwif.py scripts/migrate_rwif_v2.py
-/bin/python3 -m unittest tests/test_play_loop.py
+cargo check --locked
+cargo test --locked
 ```
 
 Expected:
-- compile step prints no errors
+- project compiles
 - tests pass
 
 ## 3. Migrate Existing RWIF Data
 
-Dry-run (recommended first):
-
-```bash
-/bin/python3 scripts/migrate_rwif_v2.py /path/to/bank.json --dry-run
-```
-
 Write to new file:
 
 ```bash
-/bin/python3 scripts/migrate_rwif_v2.py /path/to/bank.json -o /path/to/bank.v2.json
-```
-
-In-place migration:
-
-```bash
-/bin/python3 scripts/migrate_rwif_v2.py /path/to/bank.json --in-place
+cargo run -- migrate-bank /path/to/input.json /path/to/output.json
 ```
 
 What gets added (additive only):
 - `rwif_schema_version`
 - edge metadata (`state_encoding`, `numeric_range`, `wrap_mode`, `integration_rule`)
 - event metadata (`amplitude_signed`, `intent_signed`, `phase_theta`, `phase_omega`, `quantization_step`, `monotonic_index`, `schema_version`)
+
+Validate migrated output:
+
+```bash
+cargo run -- validate-bank /path/to/output.json
+```
 
 ## 4. Engine Mode Selection
 
@@ -75,16 +69,14 @@ Implementation note:
 
 ## 6. Quick Determinism Check
 
-Run same command twice and compare outputs bytewise:
+Run deterministic benchmark profile:
 
 ```bash
-/bin/python3 demo_firewall.py > /tmp/csif_run_a.log
-/bin/python3 demo_firewall.py > /tmp/csif_run_b.log
-diff -u /tmp/csif_run_a.log /tmp/csif_run_b.log
+cargo run -- benchmark-determinism --iterations 100
 ```
 
 Expected:
-- no meaningful decision drift (or document any allowed nondeterministic fields).
+- benchmark report indicates stable deterministic replay behavior.
 
 ## 7. Release Gate (Minimal)
 
@@ -95,14 +87,14 @@ Before release/tag, require all:
 3. Determinism check passing.
 4. Contradiction trace path visible and auditable.
 5. Docs updated:
-- [CSIF_V2_ENGINE_SPEC.md](CSIF_V2_ENGINE_SPEC.md)
-- [RWIF_V2_FIELD_SPEC.md](RWIF_V2_FIELD_SPEC.md)
+- [CSIF_V2_ENGINE_SPEC.md](../csif/CSIF_V2_ENGINE_SPEC.md)
+- [RWIF_V2_FIELD_SPEC.md](../rwif/RWIF_V2_FIELD_SPEC.md)
 - [CSIF_RWIF_V2_PROJECT_BLUEPRINT.md](CSIF_RWIF_V2_PROJECT_BLUEPRINT.md)
 
 ## 8. Suggested Next Automation
 
 - Add CI job that runs:
-  - py_compile
+  - cargo check --locked
   - unit tests
   - RWIF migration smoke test
   - deterministic replay check
