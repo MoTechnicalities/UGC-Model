@@ -42,6 +42,13 @@ RWIF is the complete reasoning trace that records:
 
 Together, CSIF and RWIF form the backbone of the UGC Model.
 
+## Full Disclosure Specifications
+
+For the complete organized specification set (CSIF, RWIF, Semantic Layers,
+conformance, and implementation blueprints), see:
+
+- [Specification Disclosure Index](docs/specifications/README.md)
+
 ## Key Features
 
 ### OpenAI-Compatible API Surface
