@@ -183,6 +183,7 @@ Chat behavior notes:
 
 - `POST /v1/chat/completions` uses the provided message history and responds with contextual conversation output.
 - Chat replies now include deterministic intent-aware phrasing (`greeting`, `identity`, `help`, `troubleshooting`, `math`, `general`) for more natural user interaction.
+- Decimal truth semantics for chat reasoning are documented as a formal adopted finding: [FORMAL_FINDING_DECIMAL_SEMANTICS.md](FORMAL_FINDING_DECIMAL_SEMANTICS.md).
 - Chat replies support deterministic style adaptation (`concise` vs `standard`) based on user wording such as `brief` or `concise`.
 - Greeting openings now support time-crystal-driven variant selection so introduction responses feel less repetitive while remaining auditable/replayable.
 - The same time-crystal variation pattern now applies to the no-retrieval fallback sentence and the closing `Next options` heading.

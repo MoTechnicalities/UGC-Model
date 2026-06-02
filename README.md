@@ -226,6 +226,7 @@ cargo run -- serve-openai --port 8080
 ## Documentation Map
 
 - High-level technical reference: [docs/TECHNICAL_REFERENCE.md](docs/TECHNICAL_REFERENCE.md)
+- Formal finding (decimal semantics): [docs/FORMAL_FINDING_DECIMAL_SEMANTICS.md](docs/FORMAL_FINDING_DECIMAL_SEMANTICS.md)
 - Full specifications index: [docs/specifications/README.md](docs/specifications/README.md)
 - Release and sync discipline: [docs/RELEASE_DISCIPLINE.md](docs/RELEASE_DISCIPLINE.md)
 - Change history: [CHANGELOG.md](CHANGELOG.md)

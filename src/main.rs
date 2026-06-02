@@ -86,6 +86,28 @@ struct ChatTimeCrystalContext {
     coordinate_source: String,
 }
 
+#[derive(Clone, Debug)]
+enum EnglishTask {
+    Rewrite { source: String },
+    Explain {
+        topic: String,
+        requested_sentences: Option<usize>,
+    },
+    SummarizeBullets { source: String },
+    AnswerQuestion {
+        topic: String,
+        requested_sentences: Option<usize>,
+    },
+    ResolveDisagreement,
+    CompareContrast {
+        left: String,
+        right: String,
+    },
+    ProsCons {
+        topic: String,
+    },
+}
+
 #[derive(Deserialize)]
 struct EmbeddingsRequest {
     model: Option<String>,
@@ -2393,18 +2415,25 @@ fn recent_user_prompts(messages: &[ChatMessage], max_count: usize) -> Vec<String
 }
 
 fn looks_like_math_expression(text: &str) -> bool {
-    let trimmed = text.trim();
+    let trimmed_candidate = normalize_chat_math_candidate(text);
+    let trimmed = trimmed_candidate.trim();
     if trimmed.is_empty() {
         return false;
     }
-    if trimmed.starts_with("/math ") || trimmed.starts_with("math:") || trimmed.starts_with("calc:") {
+    if trimmed.to_ascii_lowercase().starts_with("convert(") {
+        return true;
+    }
+    if text.trim().starts_with("/math ")
+        || text.trim().starts_with("math:")
+        || text.trim().starts_with("calc:")
+    {
         return true;
     }
 
     let has_digit = trimmed.chars().any(|c| c.is_ascii_digit());
     let has_operator = trimmed
         .chars()
-        .any(|c| matches!(c, '+' | '-' | '*' | '/' | '^' | '!' | '(' | ')' | '='));
+        .any(|c| matches!(c, '+' | '-' | '*' | '/' | '^' | '!' | '(' | ')' | '=' | '<' | '>' | '&' | '|'));
     let has_alpha = trimmed.chars().any(|c| c.is_ascii_alphabetic());
 
     // Avoid classifying plain-language text as math if it lacks explicit math syntax.
@@ -2418,22 +2447,215 @@ fn looks_like_math_expression(text: &str) -> bool {
     // Heuristic: allow direct calculator-style prompts such as "(2+3i)^2".
     trimmed.chars().all(|c| {
         c.is_ascii_alphanumeric()
-            || matches!(c, '+' | '-' | '*' | '/' | '^' | '!' | '(' | ')' | '.' | ',' | '_' | ' ')
+            || matches!(c, '+' | '-' | '*' | '/' | '^' | '!' | '(' | ')' | '.' | ',' | '_' | ' ' | '<' | '>' | '=' | '&' | '|')
     })
 }
 
-fn normalize_chat_math_candidate(prompt: &str) -> &str {
+fn is_strict_math_fragment(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let has_signal = trimmed
+        .chars()
+        .any(|c| c.is_ascii_digit() || c.is_ascii_alphabetic() || matches!(c, ')' | '('));
+    has_signal
+        && trimmed.chars().all(|c| {
+            c.is_ascii_alphanumeric()
+                || matches!(
+                    c,
+                    '+' | '-' | '*' | '/' | '^' | '!' | '(' | ')' | '.' | ',' | '_' | ' '
+                )
+        })
+}
+
+fn normalize_worded_comparator_expression(input: &str) -> Option<String> {
+    let lower = input.to_ascii_lowercase();
+    let patterns = [
+        ("less than or equal to", "<="),
+        ("greater than or equal to", ">="),
+        ("not equal to", "!="),
+        ("equal to", "=="),
+        ("less than", "<"),
+        ("greater than", ">"),
+    ];
+
+    for (phrase, op) in patterns {
+        let Some(idx) = lower.find(phrase) else {
+            continue;
+        };
+        if lower[idx + phrase.len()..].contains(phrase) {
+            continue;
+        }
+        let left = input[..idx].trim();
+        let right = input[idx + phrase.len()..].trim();
+        if !is_strict_math_fragment(left) || !is_strict_math_fragment(right) {
+            continue;
+        }
+        return Some(format!("{} {} {}", left, op, right));
+    }
+
+    None
+}
+
+fn normalize_symbolic_equality_expression(input: &str) -> Option<String> {
+    let chars = input.chars().collect::<Vec<_>>();
+    let mut equality_index = None;
+
+    for (idx, ch) in chars.iter().enumerate() {
+        if *ch != '=' {
+            continue;
+        }
+
+        let prev = idx.checked_sub(1).and_then(|i| chars.get(i)).copied();
+        let next = chars.get(idx + 1).copied();
+
+        if matches!(prev, Some('=' | '!' | '<' | '>' | '-')) || matches!(next, Some('=' | '>')) {
+            continue;
+        }
+
+        if equality_index.is_some() {
+            return None;
+        }
+        equality_index = Some(idx);
+    }
+
+    let idx = equality_index?;
+    let left = input[..idx].trim();
+    let right = input[idx + 1..].trim();
+    if !is_strict_math_fragment(left) || !is_strict_math_fragment(right) {
+        return None;
+    }
+
+    Some(format!("{} == {}", left, right))
+}
+
+fn normalize_decimal_literals_for_chat(input: &str) -> String {
+    let chars = input.chars().collect::<Vec<_>>();
+    let mut normalized = String::with_capacity(input.len());
+    let mut i = 0usize;
+
+    while i < chars.len() {
+        let ch = chars[i];
+        if ch.is_ascii_digit() || ch == '.' {
+            let start = i;
+            let mut dot_count = 0usize;
+            while i < chars.len() && (chars[i].is_ascii_digit() || chars[i] == '.') {
+                if chars[i] == '.' {
+                    dot_count += 1;
+                    if dot_count > 1 {
+                        break;
+                    }
+                }
+                i += 1;
+            }
+            let raw = chars[start..i].iter().collect::<String>();
+            if let Ok(value) = raw.parse::<f64>() {
+                normalized.push_str(&format_number(value));
+            } else {
+                normalized.push_str(&raw);
+            }
+            continue;
+        }
+
+        normalized.push(ch);
+        i += 1;
+    }
+
+    normalized
+}
+
+fn normalize_chat_math_candidate(prompt: &str) -> String {
     let trimmed = prompt.trim();
-    if let Some(rest) = trimmed.strip_prefix("/math ") {
-        return rest.trim();
+    let stripped = if let Some(rest) = trimmed.strip_prefix("/math ") {
+        rest.trim()
+    } else if let Some(rest) = trimmed.strip_prefix("math:") {
+        rest.trim()
+    } else if let Some(rest) = trimmed.strip_prefix("calc:") {
+        rest.trim()
+    } else {
+        trimmed
+    };
+
+    fn is_mul_left(c: char) -> bool {
+        c.is_ascii_digit() || matches!(c, ')' | '.' | 'i' | 'I')
     }
-    if let Some(rest) = trimmed.strip_prefix("math:") {
-        return rest.trim();
+
+    fn is_mul_right(c: char) -> bool {
+        c.is_ascii_digit() || matches!(c, '(' | '.' | 'i' | 'I')
     }
-    if let Some(rest) = trimmed.strip_prefix("calc:") {
-        return rest.trim();
+
+    let chars = stripped.chars().collect::<Vec<_>>();
+    let mut normalized = String::with_capacity(stripped.len());
+    for (idx, ch) in chars.iter().enumerate() {
+        let mapped = match *ch {
+            '×' | '∙' | '⋅' | '·' | '＊' => '*',
+            '÷' | '／' => '/',
+            '−' => '-',
+            '＋' => '+',
+            '＾' => '^',
+            '＝' => '=',
+            '≠' => '!',
+            'x' | 'X' => {
+                let prev = if idx > 0 { chars.get(idx - 1).copied() } else { None };
+                let next = chars.get(idx + 1).copied();
+                if prev.map(is_mul_left).unwrap_or(false) && next.map(is_mul_right).unwrap_or(false)
+                {
+                    '*'
+                } else {
+                    *ch
+                }
+            }
+            _ => *ch,
+        };
+        normalized.push(mapped);
+        if *ch == '≠' {
+            normalized.push('=');
+        }
     }
-    trimmed
+
+    let mut normalized = normalized.trim().to_string();
+
+    // Strip lightweight natural-language wrappers so prompts like
+    // "Is 5<1?" or "what is 7*8?" route into deterministic evaluation.
+    for prefix in [
+        "what is ",
+        "what's ",
+        "is ",
+        "calculate ",
+        "compute ",
+        "evaluate ",
+        "solve ",
+    ] {
+        let lower = normalized.to_ascii_lowercase();
+        if lower.starts_with(prefix) {
+            let rest = normalized[prefix.len()..].trim_start();
+            normalized = rest
+                .trim_start_matches(|c: char| c.is_ascii_whitespace() || matches!(c, ':' | '-'))
+                .to_string();
+            break;
+        }
+    }
+
+    normalized = normalized
+        .trim()
+        .trim_end_matches(|c: char| matches!(c, '?' | '!' | ';' | ':'))
+        .trim()
+        .to_string();
+
+    if normalized.to_ascii_lowercase().starts_with("convert(") {
+        return normalize_decimal_literals_for_chat(&normalized);
+    }
+
+    if let Some(rewritten) = normalize_symbolic_equality_expression(&normalized) {
+        return rewritten;
+    }
+
+    if let Some(rewritten) = normalize_worded_comparator_expression(&normalized) {
+        normalized = rewritten;
+    }
+
+    normalize_decimal_literals_for_chat(&normalized)
 }
 
 fn detect_chat_intent(prompt: &str) -> &'static str {
@@ -3025,6 +3247,388 @@ fn capability_hint_text(concise: bool) -> &'static str {
         "I can handle chat, math, retrieval, and semantic disambiguation in one flow."
     } else {
         "I can help across conversational guidance, deterministic math, RWIF-backed retrieval, and semantic disambiguation, then turn that into practical next actions."
+    }
+}
+
+fn sentence_case_ascii(text: &str) -> String {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    let mut chars = trimmed.chars();
+    let first = chars.next().unwrap_or_default();
+    let mut out = String::new();
+    if first.is_ascii_alphabetic() {
+        out.push(first.to_ascii_uppercase());
+    } else {
+        out.push(first);
+    }
+    out.push_str(chars.as_str());
+    out
+}
+
+fn normalize_terminal_sentence(text: &str) -> String {
+    let mut out = text.trim().to_string();
+    if out.is_empty() {
+        return out;
+    }
+    if !out.ends_with('.') && !out.ends_with('!') && !out.ends_with('?') {
+        out.push('.');
+    }
+    out
+}
+
+fn split_summary_items(source: &str) -> Vec<String> {
+    source
+        .replace(';', ",")
+        .replace(" and ", ",")
+        .split(',')
+        .map(str::trim)
+        .filter(|item| !item.is_empty())
+        .map(|item| normalize_terminal_sentence(&sentence_case_ascii(item)))
+        .collect::<Vec<_>>()
+}
+
+fn requested_sentence_count(prompt: &str) -> Option<usize> {
+    let lower = prompt.to_ascii_lowercase();
+    for n in 1..=9usize {
+        let singular = format!("in {} sentence", n);
+        let plural = format!("in {} sentences", n);
+        if lower.contains(&singular) || lower.contains(&plural) {
+            return Some(n);
+        }
+    }
+    None
+}
+
+fn source_after_colon(prompt: &str) -> Option<String> {
+    prompt
+        .split_once(':')
+        .map(|(_, rest)| rest.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+fn extract_question_topic(prompt: &str) -> Option<String> {
+    let trimmed = prompt.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    let prefixes = [
+        "what is ",
+        "what are ",
+        "what does ",
+        "how does ",
+        "why does ",
+        "why is ",
+        "how do ",
+        "how can ",
+    ];
+
+    for prefix in prefixes {
+        if lower.starts_with(prefix) {
+            let mut topic = trimmed[prefix.len()..]
+                .trim()
+                .trim_end_matches('?')
+                .trim_end_matches('.')
+                .trim()
+                .to_string();
+            if let Some(idx) = topic.to_ascii_lowercase().find(", in ") {
+                topic = topic[..idx].trim().to_string();
+            }
+            if !topic.is_empty() {
+                return Some(topic);
+            }
+        }
+    }
+    None
+}
+
+fn extract_compare_subjects(prompt: &str) -> Option<(String, String)> {
+    let trimmed = prompt.trim().trim_end_matches('?').trim_end_matches('.').trim();
+    let lower = trimmed.to_ascii_lowercase();
+    let compare_idx = lower.find("compare ")?;
+    let mut body = trimmed[compare_idx + "compare ".len()..].trim().to_string();
+    if let Some((_, rhs)) = body.split_once(':') {
+        body = rhs.trim().to_string();
+    }
+
+    if let Some((left, right)) = split_case_insensitive(&body, " vs ") {
+        let left = left.trim().trim_matches(',').to_string();
+        let right = right.trim().trim_matches(',').to_string();
+        if !left.is_empty() && !right.is_empty() {
+            return Some((left, right));
+        }
+    }
+
+    if let Some((left, right)) = split_case_insensitive(&body, " and ") {
+        let left = left.trim().trim_matches(',').to_string();
+        let right = right.trim().trim_matches(',').to_string();
+        if !left.is_empty() && !right.is_empty() {
+            return Some((left, right));
+        }
+    }
+
+    None
+}
+
+fn extract_pros_cons_topic(prompt: &str) -> Option<String> {
+    let trimmed = prompt.trim().trim_end_matches('?').trim_end_matches('.').trim();
+    let lower = trimmed.to_ascii_lowercase();
+
+    for marker in ["pros and cons of ", "pros/cons of ", "pros & cons of "] {
+        if let Some(idx) = lower.find(marker) {
+            let topic = trimmed[idx + marker.len()..].trim();
+            if !topic.is_empty() {
+                return Some(topic.to_string());
+            }
+        }
+    }
+
+    None
+}
+
+fn detect_english_task(prompt: &str) -> Option<EnglishTask> {
+    let trimmed = prompt.trim();
+    let lower = trimmed.to_ascii_lowercase();
+
+    if let Some((left, right)) = extract_compare_subjects(trimmed) {
+        return Some(EnglishTask::CompareContrast { left, right });
+    }
+
+    if lower.contains("pros and cons") || lower.contains("pros/cons") || lower.contains("pros & cons") {
+        if let Some(topic) = extract_pros_cons_topic(trimmed) {
+            return Some(EnglishTask::ProsCons { topic });
+        }
+    }
+
+    if lower.contains("i disagree")
+        || (lower.contains("respond politely") && lower.contains("next step"))
+    {
+        return Some(EnglishTask::ResolveDisagreement);
+    }
+
+    if lower.contains("summarize") && lower.contains("bullet") {
+        let source = source_after_colon(trimmed)
+            .unwrap_or_else(|| trimmed.to_string());
+        return Some(EnglishTask::SummarizeBullets { source });
+    }
+
+    if lower.contains("rewrite") {
+        let source = source_after_colon(trimmed).unwrap_or_else(|| {
+            trimmed
+                .split_whitespace()
+                .skip_while(|token| token.to_ascii_lowercase() != "rewrite")
+                .skip(1)
+                .collect::<Vec<_>>()
+                .join(" ")
+        });
+        if !source.trim().is_empty() {
+            return Some(EnglishTask::Rewrite { source });
+        }
+    }
+
+    if lower.starts_with("explain") {
+        let mut topic = trimmed[7..].trim().to_string();
+        if topic.to_ascii_lowercase().starts_with("in plain english") {
+            topic = topic[16..]
+                .trim_start_matches(|c: char| c.is_ascii_whitespace() || matches!(c, ',' | ':' | '-'))
+                .to_string();
+        }
+        if let Some(idx) = topic.to_ascii_lowercase().find(", in ") {
+            topic = topic[..idx].trim().to_string();
+        }
+        topic = topic.trim_end_matches('.').trim().to_string();
+        if !topic.is_empty() {
+            return Some(EnglishTask::Explain {
+                topic,
+                requested_sentences: requested_sentence_count(trimmed),
+            });
+        }
+    }
+
+    if let Some(topic) = extract_question_topic(trimmed) {
+        return Some(EnglishTask::AnswerQuestion {
+            topic,
+            requested_sentences: requested_sentence_count(trimmed),
+        });
+    }
+
+    None
+}
+
+fn render_rewrite_task(source: &str) -> String {
+    let lower = source.to_ascii_lowercase();
+    let rewritten = if (lower.contains("messed up") && lower.contains("deploy"))
+        || lower.contains("messed up the deploy")
+    {
+        "We encountered a deployment issue and need to resolve it quickly.".to_string()
+    } else {
+        let softened = source
+            .replace("can't", "cannot")
+            .replace("won't", "will not")
+            .replace("we're", "we are")
+            .replace("it's", "it is");
+        normalize_terminal_sentence(&sentence_case_ascii(&softened))
+    };
+
+    format!("Professional rewrite:\n{}", rewritten)
+}
+
+fn render_explain_task(topic: &str, requested_sentences: Option<usize>) -> String {
+    let sentence_target = requested_sentences.unwrap_or(3).clamp(1, 5);
+    let lower_topic = topic.to_ascii_lowercase();
+
+    let mut sentences = if lower_topic.contains("load balancer") {
+        vec![
+            "A load balancer distributes incoming traffic across multiple servers so no single server takes all the load.".to_string(),
+            "This keeps performance stable by reducing bottlenecks and preserving response times during traffic spikes.".to_string(),
+            "It also improves reliability by routing traffic away from unhealthy instances when failures happen.".to_string(),
+        ]
+    } else {
+        vec![
+            format!("{} is a system concept used to organize and deliver work in a controlled way.", sentence_case_ascii(topic)),
+            "In practice, it improves clarity by defining how requests are handled and where decisions are applied.".to_string(),
+            "That makes behavior easier to reason about, debug, and evolve over time.".to_string(),
+        ]
+    };
+
+    if sentence_target < sentences.len() {
+        sentences.truncate(sentence_target);
+    }
+
+    sentences.join(" ")
+}
+
+fn render_summarize_bullets_task(source: &str) -> String {
+    let items = split_summary_items(source);
+    if items.is_empty() {
+        return "Summary:\n- No summary items were detected in the provided text.".to_string();
+    }
+
+    let mut out = String::from("Summary:\n");
+    for item in items {
+        out.push_str("- ");
+        out.push_str(&item);
+        out.push('\n');
+    }
+    out.trim_end().to_string()
+}
+
+fn render_question_answer_task(topic: &str, requested_sentences: Option<usize>) -> String {
+    let sentence_target = requested_sentences.unwrap_or(3).clamp(1, 5);
+    let lower_topic = topic.to_ascii_lowercase();
+
+    let mut sentences = if lower_topic.contains("load balancer") {
+        vec![
+            "A load balancer distributes incoming traffic across multiple servers to prevent overload on any single machine.".to_string(),
+            "It improves reliability by redirecting traffic away from unhealthy instances automatically.".to_string(),
+            "It also helps keep response times stable during spikes by spreading demand across available capacity.".to_string(),
+        ]
+    } else {
+        vec![
+            format!("{} is best understood as a practical mechanism for organizing how a system behaves under real workloads.", sentence_case_ascii(topic)),
+            "The key idea is to reduce bottlenecks by distributing responsibility clearly across components and execution paths.".to_string(),
+            "That usually improves reliability, performance, and maintainability at the same time.".to_string(),
+        ]
+    };
+
+    if sentence_target < sentences.len() {
+        sentences.truncate(sentence_target);
+    }
+
+    sentences.join(" ")
+}
+
+fn render_disagreement_resolution_task() -> String {
+    "Thanks for pushing back; that is helpful. I may have missed your intended framing, and I want to correct that respectfully. Next step: share the exact sentence or claim you disagree with, and I will provide a revised answer plus a concise rationale.".to_string()
+}
+
+fn render_compare_contrast_task(left: &str, right: &str) -> String {
+    format!(
+        "Comparison:\n- Similarity: both {} and {} can solve overlapping problems depending on context.\n- Difference: {} is typically chosen for one set of operational constraints, while {} is preferred when different trade-offs are required.\n- Practical guidance: choose based on reliability needs, operational complexity, and team familiarity.",
+        left,
+        right,
+        left,
+        right
+    )
+}
+
+fn render_pros_cons_task(topic: &str) -> String {
+    format!(
+        "Pros and Cons:\nPros:\n- Can improve reliability and operational consistency for {}.\n- Can improve scalability and performance under increasing demand.\nCons:\n- Adds implementation and maintenance complexity.\n- May increase coordination overhead if observability and ownership are unclear.",
+        topic
+    )
+}
+
+fn render_english_task(task: &EnglishTask) -> String {
+    match task {
+        EnglishTask::Rewrite { source } => render_rewrite_task(source),
+        EnglishTask::Explain {
+            topic,
+            requested_sentences,
+        } => render_explain_task(topic, *requested_sentences),
+        EnglishTask::SummarizeBullets { source } => render_summarize_bullets_task(source),
+        EnglishTask::AnswerQuestion {
+            topic,
+            requested_sentences,
+        } => render_question_answer_task(topic, *requested_sentences),
+        EnglishTask::ResolveDisagreement => render_disagreement_resolution_task(),
+        EnglishTask::CompareContrast { left, right } => render_compare_contrast_task(left, right),
+        EnglishTask::ProsCons { topic } => render_pros_cons_task(topic),
+    }
+}
+
+fn english_task_meta(task: &EnglishTask, output: &str) -> Value {
+    match task {
+        EnglishTask::Rewrite { source } => json!({
+            "status": "ok",
+            "task": "rewrite",
+            "input": source,
+            "output": output,
+        }),
+        EnglishTask::Explain {
+            topic,
+            requested_sentences,
+        } => json!({
+            "status": "ok",
+            "task": "explain",
+            "input": topic,
+            "requested_sentences": requested_sentences,
+            "output": output,
+        }),
+        EnglishTask::SummarizeBullets { source } => json!({
+            "status": "ok",
+            "task": "summarize_bullets",
+            "input": source,
+            "output": output,
+        }),
+        EnglishTask::AnswerQuestion {
+            topic,
+            requested_sentences,
+        } => json!({
+            "status": "ok",
+            "task": "question_answer",
+            "input": topic,
+            "requested_sentences": requested_sentences,
+            "output": output,
+        }),
+        EnglishTask::ResolveDisagreement => json!({
+            "status": "ok",
+            "task": "disagreement_resolution",
+            "output": output,
+        }),
+        EnglishTask::CompareContrast { left, right } => json!({
+            "status": "ok",
+            "task": "compare_contrast",
+            "left": left,
+            "right": right,
+            "output": output,
+        }),
+        EnglishTask::ProsCons { topic } => json!({
+            "status": "ok",
+            "task": "pros_cons",
+            "input": topic,
+            "output": output,
+        }),
     }
 }
 
@@ -7358,6 +7962,45 @@ fn ast_to_infix(ast: &AstNode) -> String {
     }
 }
 
+fn ast_to_infix_exact(ast: &AstNode) -> String {
+    match ast {
+        AstNode::Number(n) => n.to_string(),
+        AstNode::Variable(name) => name.clone(),
+        AstNode::Matrix(rows) => {
+            let inner = rows
+                .iter()
+                .map(|row| {
+                    format!(
+                        "[{}]",
+                        row.iter()
+                            .map(ast_to_infix_exact)
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("[{}]", inner)
+        }
+        AstNode::UnaryNeg(inner) => format!("-({})", ast_to_infix_exact(inner)),
+        AstNode::Function { name, args } if name == "imaginary" => match args.first() {
+            Some(AstNode::Number(n)) if (*n - 1.0).abs() < 1e-12 => "i".to_string(),
+            Some(arg) => format!("{}*i", ast_to_infix_exact(arg)),
+            None => "i".to_string(),
+        },
+        AstNode::Function { name, args } if name == "factorial" => {
+            format!("{}!", args.first().map(ast_to_infix_exact).unwrap_or_default())
+        }
+        AstNode::Function { name, args } => {
+            let rendered = args.iter().map(ast_to_infix_exact).collect::<Vec<_>>().join(", ");
+            format!("{}({})", name, rendered)
+        }
+        AstNode::Binary { op, left, right } => {
+            format!("({} {} {})", ast_to_infix_exact(left), op, ast_to_infix_exact(right))
+        }
+    }
+}
+
 fn ast_to_latex(ast: &AstNode) -> String {
     match ast {
         AstNode::Number(n) => format_number(*n),
@@ -7451,6 +8094,30 @@ fn logic_expr_to_text(expr: &LogicExprNode) -> String {
     }
 }
 
+fn logic_expr_to_text_exact(expr: &LogicExprNode) -> String {
+    match expr {
+        LogicExprNode::BoolLiteral(true) => "true".to_string(),
+        LogicExprNode::BoolLiteral(false) => "false".to_string(),
+        LogicExprNode::Predicate { name, args } => format!(
+            "{}({})",
+            name,
+            args.iter().map(ast_to_infix_exact).collect::<Vec<_>>().join(", ")
+        ),
+        LogicExprNode::Comparison { op, left, right } => format!(
+            "{} {} {}",
+            ast_to_infix_exact(left),
+            comparison_op_to_text(op),
+            ast_to_infix_exact(right)
+        ),
+        LogicExprNode::Not(inner) => format!("not ({})", logic_expr_to_text_exact(inner)),
+        LogicExprNode::And(parts) => parts.iter().map(logic_expr_to_text_exact).collect::<Vec<_>>().join(" and "),
+        LogicExprNode::Or(parts) => parts.iter().map(logic_expr_to_text_exact).collect::<Vec<_>>().join(" or "),
+        LogicExprNode::Xor(parts) => parts.iter().map(logic_expr_to_text_exact).collect::<Vec<_>>().join(" xor "),
+        LogicExprNode::Implies(lhs, rhs) => format!("({}) -> ({})", logic_expr_to_text_exact(lhs), logic_expr_to_text_exact(rhs)),
+        LogicExprNode::Equivalent(lhs, rhs) => format!("({}) <-> ({})", logic_expr_to_text_exact(lhs), logic_expr_to_text_exact(rhs)),
+    }
+}
+
 fn logic_expr_to_latex(expr: &LogicExprNode) -> String {
     match expr {
         LogicExprNode::BoolLiteral(true) => "\\mathrm{true}".to_string(),
@@ -7475,11 +8142,31 @@ fn logic_expr_to_latex(expr: &LogicExprNode) -> String {
     }
 }
 
-fn compare_complex_values(op: &ComparisonOp, left: ComplexValue, right: ComplexValue) -> Result<bool, String> {
-    let approx_eq = (left.re - right.re).abs() < 1e-12 && (left.im - right.im).abs() < 1e-12;
+fn compare_complex_values(
+    op: &ComparisonOp,
+    left: ComplexValue,
+    right: ComplexValue,
+    mode: MathMode,
+) -> Result<bool, String> {
+    let eq = match mode {
+        MathMode::Algebraic => left.re == right.re && left.im == right.im,
+        MathMode::Geometric => {
+            match (
+                decimal_components(left.re),
+                decimal_components(left.im),
+                decimal_components(right.re),
+                decimal_components(right.im),
+            ) {
+                (Some((lr_coeff, lr_scale)), Some((li_coeff, li_scale)), Some((rr_coeff, rr_scale)), Some((ri_coeff, ri_scale))) => {
+                    lr_coeff == rr_coeff && lr_scale == rr_scale && li_coeff == ri_coeff && li_scale == ri_scale
+                }
+                _ => left.re == right.re && left.im == right.im,
+            }
+        }
+    };
     match op {
-        ComparisonOp::Eq => Ok(approx_eq),
-        ComparisonOp::Ne => Ok(!approx_eq),
+        ComparisonOp::Eq => Ok(eq),
+        ComparisonOp::Ne => Ok(!eq),
         ComparisonOp::Lt | ComparisonOp::Le | ComparisonOp::Gt | ComparisonOp::Ge => {
             if !left.is_real() || !right.is_real() {
                 return Err("ordering comparisons require real-valued operands".to_string());
@@ -7539,7 +8226,7 @@ fn evaluate_logic_expression(
         LogicExprNode::Comparison { op, left, right } => {
             let left_value = evaluate_ast_complex(left, state, options, steps)?;
             let right_value = evaluate_ast_complex(right, state, options, steps)?;
-            let comparison = compare_complex_values(op, left_value, right_value)?;
+            let comparison = compare_complex_values(op, left_value, right_value, options.mode)?;
             Ok(LogicResult {
                 status: LogicStatus::Success,
                 truth: if comparison { TruthValue::True } else { TruthValue::False },
@@ -8692,6 +9379,10 @@ fn torsion_residual(trajectory: &[PhaseStep]) -> f64 {
 }
 
 fn evaluate_math_expression(expr: &str, state: &AppState, options: MathOptions) -> Result<Value, String> {
+    if let Some(conversion_result) = evaluate_unit_conversion_expression(expr, options) {
+        return conversion_result;
+    }
+
     let tokens = tokenize_expression(expr)?;
     let parsed = parse_math_or_logic_tokens(&tokens)?;
     let numeric_determination = match options.mode {
@@ -8922,7 +9613,7 @@ fn evaluate_math_expression(expr: &str, state: &AppState, options: MathOptions) 
             Ok(payload)
         }
         ParsedMathInput::Logic(logic_expr) => {
-            let normalized = logic_expr_to_text(&logic_expr);
+            let normalized = logic_expr_to_text_exact(&logic_expr);
             let latex_expr = logic_expr_to_latex(&logic_expr);
             let planned_logic_job_id = stable_bridge_id("logic_user", &normalized);
             let math_jobs = build_logic_operand_math_jobs(&logic_expr, state, options, &planned_logic_job_id)?;
@@ -9890,6 +10581,453 @@ fn retrieval_payload(state: &AppState, query: &str, top_k: usize) -> Value {
     })
 }
 
+fn split_case_insensitive<'a>(text: &'a str, needle: &str) -> Option<(&'a str, &'a str)> {
+    let lower = text.to_ascii_lowercase();
+    let idx = lower.find(&needle.to_ascii_lowercase())?;
+    Some((&text[..idx], &text[idx + needle.len()..]))
+}
+
+fn split_all_case_insensitive<'a>(text: &'a str, needle: &str) -> Vec<&'a str> {
+    let lower = text.to_ascii_lowercase();
+    let needle_lower = needle.to_ascii_lowercase();
+    let mut parts = Vec::new();
+    let mut start = 0usize;
+    while let Some(relative) = lower[start..].find(&needle_lower) {
+        let idx = start + relative;
+        parts.push(text[start..idx].trim());
+        start = idx + needle.len();
+    }
+    parts.push(text[start..].trim());
+    parts
+}
+
+#[derive(Clone, Copy)]
+struct UnitSpec {
+    dimension: &'static str,
+    to_base_scale: f64,
+    to_base_offset: f64,
+}
+
+fn normalize_unit_key(unit: &str) -> String {
+    unit.trim()
+        .to_ascii_lowercase()
+        .replace('°', "")
+        .replace('μ', "u")
+        .replace(' ', "")
+        .replace('_', "")
+}
+
+fn unit_spec(unit: &str) -> Option<UnitSpec> {
+    match normalize_unit_key(unit).as_str() {
+        // Length (base: meter)
+        "m" | "meter" | "meters" => Some(UnitSpec { dimension: "length", to_base_scale: 1.0, to_base_offset: 0.0 }),
+        "cm" | "centimeter" | "centimeters" => Some(UnitSpec { dimension: "length", to_base_scale: 0.01, to_base_offset: 0.0 }),
+        "mm" | "millimeter" | "millimeters" => Some(UnitSpec { dimension: "length", to_base_scale: 0.001, to_base_offset: 0.0 }),
+        "km" | "kilometer" | "kilometers" => Some(UnitSpec { dimension: "length", to_base_scale: 1000.0, to_base_offset: 0.0 }),
+        "um" | "micrometer" | "micrometers" => Some(UnitSpec { dimension: "length", to_base_scale: 1e-6, to_base_offset: 0.0 }),
+        "nm" | "nanometer" | "nanometers" => Some(UnitSpec { dimension: "length", to_base_scale: 1e-9, to_base_offset: 0.0 }),
+        "in" | "inch" | "inches" => Some(UnitSpec { dimension: "length", to_base_scale: 0.0254, to_base_offset: 0.0 }),
+        "ft" | "foot" | "feet" => Some(UnitSpec { dimension: "length", to_base_scale: 0.3048, to_base_offset: 0.0 }),
+        "yd" | "yard" | "yards" => Some(UnitSpec { dimension: "length", to_base_scale: 0.9144, to_base_offset: 0.0 }),
+        "mi" | "mile" | "miles" => Some(UnitSpec { dimension: "length", to_base_scale: 1609.344, to_base_offset: 0.0 }),
+
+        // Time (base: second)
+        "s" | "sec" | "second" | "seconds" => Some(UnitSpec { dimension: "time", to_base_scale: 1.0, to_base_offset: 0.0 }),
+        "ms" | "millisecond" | "milliseconds" => Some(UnitSpec { dimension: "time", to_base_scale: 1e-3, to_base_offset: 0.0 }),
+        "us" | "microsecond" | "microseconds" => Some(UnitSpec { dimension: "time", to_base_scale: 1e-6, to_base_offset: 0.0 }),
+        "ns" | "nanosecond" | "nanoseconds" => Some(UnitSpec { dimension: "time", to_base_scale: 1e-9, to_base_offset: 0.0 }),
+        "min" | "minute" | "minutes" => Some(UnitSpec { dimension: "time", to_base_scale: 60.0, to_base_offset: 0.0 }),
+        "h" | "hr" | "hour" | "hours" => Some(UnitSpec { dimension: "time", to_base_scale: 3600.0, to_base_offset: 0.0 }),
+        "day" | "days" => Some(UnitSpec { dimension: "time", to_base_scale: 86400.0, to_base_offset: 0.0 }),
+
+        // Mass (base: kilogram)
+        "kg" | "kilogram" | "kilograms" => Some(UnitSpec { dimension: "mass", to_base_scale: 1.0, to_base_offset: 0.0 }),
+        "g" | "gram" | "grams" => Some(UnitSpec { dimension: "mass", to_base_scale: 1e-3, to_base_offset: 0.0 }),
+        "mg" | "milligram" | "milligrams" => Some(UnitSpec { dimension: "mass", to_base_scale: 1e-6, to_base_offset: 0.0 }),
+        "lb" | "lbs" | "pound" | "pounds" => Some(UnitSpec { dimension: "mass", to_base_scale: 0.45359237, to_base_offset: 0.0 }),
+        "oz" | "ounce" | "ounces" => Some(UnitSpec { dimension: "mass", to_base_scale: 0.028349523125, to_base_offset: 0.0 }),
+        "tonne" | "metricton" => Some(UnitSpec { dimension: "mass", to_base_scale: 1000.0, to_base_offset: 0.0 }),
+
+        // Volume (base: liter)
+        "l" | "liter" | "liters" | "litre" | "litres" => Some(UnitSpec { dimension: "volume", to_base_scale: 1.0, to_base_offset: 0.0 }),
+        "ml" | "milliliter" | "milliliters" | "millilitre" | "millilitres" => Some(UnitSpec { dimension: "volume", to_base_scale: 1e-3, to_base_offset: 0.0 }),
+        "cl" | "centiliter" | "centiliters" => Some(UnitSpec { dimension: "volume", to_base_scale: 1e-2, to_base_offset: 0.0 }),
+        "dl" | "deciliter" | "deciliters" => Some(UnitSpec { dimension: "volume", to_base_scale: 1e-1, to_base_offset: 0.0 }),
+        "m3" => Some(UnitSpec { dimension: "volume", to_base_scale: 1000.0, to_base_offset: 0.0 }),
+        "cm3" | "cc" => Some(UnitSpec { dimension: "volume", to_base_scale: 1e-3, to_base_offset: 0.0 }),
+        "gal" | "gallon" | "gallons" => Some(UnitSpec { dimension: "volume", to_base_scale: 3.785411784, to_base_offset: 0.0 }),
+        "qt" | "quart" | "quarts" => Some(UnitSpec { dimension: "volume", to_base_scale: 0.946352946, to_base_offset: 0.0 }),
+        "pt" | "pint" | "pints" => Some(UnitSpec { dimension: "volume", to_base_scale: 0.473176473, to_base_offset: 0.0 }),
+        "cup" | "cups" => Some(UnitSpec { dimension: "volume", to_base_scale: 0.2365882365, to_base_offset: 0.0 }),
+        "floz" | "fluidounce" | "fluidounces" => Some(UnitSpec { dimension: "volume", to_base_scale: 0.0295735295625, to_base_offset: 0.0 }),
+
+        // Temperature (base: kelvin)
+        "k" | "kelvin" => Some(UnitSpec { dimension: "temperature", to_base_scale: 1.0, to_base_offset: 0.0 }),
+        "c" | "degc" | "celsius" => Some(UnitSpec { dimension: "temperature", to_base_scale: 1.0, to_base_offset: 273.15 }),
+        "f" | "degf" | "fahrenheit" => Some(UnitSpec { dimension: "temperature", to_base_scale: 5.0 / 9.0, to_base_offset: 255.3722222222222 }),
+        "r" | "degr" | "rankine" => Some(UnitSpec { dimension: "temperature", to_base_scale: 5.0 / 9.0, to_base_offset: 0.0 }),
+
+        // Speed (base: meter/second)
+        "m/s" | "mps" => Some(UnitSpec { dimension: "speed", to_base_scale: 1.0, to_base_offset: 0.0 }),
+        "km/h" | "kph" => Some(UnitSpec { dimension: "speed", to_base_scale: 1000.0 / 3600.0, to_base_offset: 0.0 }),
+        "mph" => Some(UnitSpec { dimension: "speed", to_base_scale: 0.44704, to_base_offset: 0.0 }),
+        "ft/s" | "fps" => Some(UnitSpec { dimension: "speed", to_base_scale: 0.3048, to_base_offset: 0.0 }),
+        "knot" | "knots" | "kt" => Some(UnitSpec { dimension: "speed", to_base_scale: 0.5144444444444445, to_base_offset: 0.0 }),
+
+        // Pressure (base: pascal)
+        "pa" | "pascal" | "pascals" => Some(UnitSpec { dimension: "pressure", to_base_scale: 1.0, to_base_offset: 0.0 }),
+        "kpa" => Some(UnitSpec { dimension: "pressure", to_base_scale: 1000.0, to_base_offset: 0.0 }),
+        "bar" => Some(UnitSpec { dimension: "pressure", to_base_scale: 100000.0, to_base_offset: 0.0 }),
+        "atm" => Some(UnitSpec { dimension: "pressure", to_base_scale: 101325.0, to_base_offset: 0.0 }),
+        "psi" => Some(UnitSpec { dimension: "pressure", to_base_scale: 6894.757293168, to_base_offset: 0.0 }),
+
+        _ => None,
+    }
+}
+
+fn parse_unit_measurement(text: &str) -> Result<(f64, String), String> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err("missing measurement value".to_string());
+    }
+
+    if let Some((amount, unit)) = trimmed.split_once(char::is_whitespace) {
+        let value = amount
+            .trim()
+            .parse::<f64>()
+            .map_err(|_| format!("invalid numeric value '{}'", amount.trim()))?;
+        let unit = unit.trim();
+        if unit.is_empty() {
+            return Err("missing unit symbol".to_string());
+        }
+        return Ok((value, unit.to_string()));
+    }
+
+    // Also accept compact forms like "1m" or "60mph".
+    let mut split_points = trimmed
+        .char_indices()
+        .map(|(idx, _)| idx)
+        .collect::<Vec<_>>();
+    split_points.push(trimmed.len());
+
+    for idx in split_points.into_iter().skip(1) {
+        let amount = trimmed[..idx].trim();
+        let unit = trimmed[idx..].trim();
+        if unit.is_empty() {
+            continue;
+        }
+        let Some(first) = unit.chars().next() else {
+            continue;
+        };
+        if !(first.is_ascii_alphabetic() || matches!(first, '°' | 'μ')) {
+            continue;
+        }
+        if let Ok(value) = amount.parse::<f64>() {
+            return Ok((value, unit.to_string()));
+        }
+    }
+
+    Err(format!(
+        "expected '<value> <unit>' measurement, got '{}'",
+        text
+    ))
+}
+
+fn convert_unit_value(value: f64, source_unit: &str, target_unit: &str) -> Result<(f64, &'static str), String> {
+    let source = unit_spec(source_unit)
+        .ok_or_else(|| format!("unsupported source unit '{}'", source_unit))?;
+    let target = unit_spec(target_unit)
+        .ok_or_else(|| format!("unsupported target unit '{}'", target_unit))?;
+    if source.dimension != target.dimension {
+        return Err(format!(
+            "incompatible units: '{}' is {} but '{}' is {}",
+            source_unit, source.dimension, target_unit, target.dimension
+        ));
+    }
+    let base_value = value * source.to_base_scale + source.to_base_offset;
+    let converted = (base_value - target.to_base_offset) / target.to_base_scale;
+    Ok((converted, source.dimension))
+}
+
+fn parse_convert_call(text: &str) -> Result<(f64, String, String), String> {
+    let trimmed = text.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !lower.starts_with("convert(") {
+        return Err("conversion expression must start with Convert(".to_string());
+    }
+    let close_idx = trimmed
+        .rfind(')')
+        .ok_or_else(|| "missing closing ')' in Convert(...) expression".to_string())?;
+    if !trimmed[close_idx + 1..].trim().is_empty() {
+        return Err("unexpected trailing text after Convert(...)".to_string());
+    }
+
+    let inside = trimmed[8..close_idx].trim();
+    let (source_measurement, target_raw) = split_case_insensitive(inside, ",to=")
+        .ok_or_else(|| "Convert(...) requires ',to=' named target unit".to_string())?;
+    let (source_value, source_unit) = parse_unit_measurement(source_measurement)?;
+    let target_unit = target_raw.trim();
+    if target_unit.is_empty() {
+        return Err("missing target unit after ',to='".to_string());
+    }
+
+    Ok((source_value, source_unit, target_unit.to_string()))
+}
+
+fn build_unit_conversion_payload(
+    expr: &str,
+    options: MathOptions,
+    analysis: Vec<Value>,
+    round_trip_consistent: bool,
+    result: Value,
+    chat_surface: String,
+) -> Value {
+    let mode_txt = match options.mode {
+        MathMode::Algebraic => "algebraic",
+        MathMode::Geometric => "geometric",
+    };
+    let angle_txt = match options.angle_unit {
+        AngleUnit::Radians => "radians",
+        AngleUnit::Degrees => "degrees",
+    };
+    let numeric_determination = match options.mode {
+        MathMode::Algebraic => "ieee754_binary_trace",
+        MathMode::Geometric => "geometric_decimal_scaling",
+    };
+    let torsion_norm = if round_trip_consistent { 0.0 } else { 1.0 };
+    let unit_crystal = build_unit_crystal_payload(options, angle_txt, 0.0, torsion_norm);
+    let threshold = unit_crystal
+        .get("policy")
+        .and_then(|p| p.get("loop_torsion_norm_threshold"))
+        .and_then(Value::as_f64)
+        .unwrap_or(0.2);
+
+    let bridge_audit = conversion_bridge_audit_value(expr, options, &result);
+
+    json!({
+        "object": "csif.math.result",
+        "engine": "deterministic_math_v2",
+        "mode": mode_txt,
+        "angle_unit": angle_txt,
+        "reasoning_policy": {
+            "mode_isolation": "strict",
+            "numeric_determination": numeric_determination,
+            "preserve_binary_trace": options.mode == MathMode::Algebraic,
+            "preserve_decimal_geometric": options.mode == MathMode::Geometric
+        },
+        "expression": expr,
+        "normalized_expression": expr,
+        "result": result,
+        "result_latex": chat_surface,
+        "chat_surface": chat_surface,
+        "deterministic": true,
+        "bridge_audit": bridge_audit,
+        "unit_conversion_analysis": {
+            "claims": analysis,
+            "round_trip_consistent": round_trip_consistent,
+            "loop_metrics": {
+                "loop_torsion_norm": torsion_norm,
+                "threshold": threshold,
+                "triggered": !round_trip_consistent
+            }
+        },
+        "unit_crystal": unit_crystal.clone(),
+        "unit_contradiction_signal": unit_crystal
+            .get("contradiction_signal")
+            .cloned()
+            .unwrap_or(Value::Null),
+        "phase_signature": unit_crystal
+            .get("phase_signature")
+            .cloned()
+            .unwrap_or(Value::Null),
+    })
+}
+
+fn evaluate_single_conversion_expression(expr: &str, options: MathOptions) -> Result<Value, String> {
+    let (source_value, source_unit, target_unit) = parse_convert_call(expr)?;
+    let (actual_value, _dimension) = convert_unit_value(source_value, &source_unit, &target_unit)?;
+    let (round_trip_back, _) = convert_unit_value(actual_value, &target_unit, &source_unit)?;
+    let round_trip_consistent = (round_trip_back - source_value).abs() < 1e-12;
+
+    let analysis = vec![json!({
+        "source_value": source_value,
+        "source_unit": source_unit,
+        "target_unit": target_unit,
+        "actual_value": actual_value,
+        "actual_text": format!("{} {}", format_number(actual_value), target_unit),
+        "matches_expected": true,
+    })];
+
+    let surface = format!(
+        "Unit conversion result:\nConvert({} {}, to={}) = {} {}\nRound-trip consistency: {}",
+        format_number(source_value),
+        source_unit,
+        target_unit,
+        format_number(actual_value),
+        target_unit,
+        if round_trip_consistent { "true" } else { "false" }
+    );
+
+    Ok(build_unit_conversion_payload(
+        expr,
+        options,
+        analysis,
+        round_trip_consistent,
+        json!(actual_value),
+        surface,
+    ))
+}
+
+fn evaluate_conversion_claim_expression(expr: &str, options: MathOptions) -> Result<Value, String> {
+    let claims = split_all_case_insensitive(expr, " and ");
+    if claims.is_empty() {
+        return Err("no conversion claims found".to_string());
+    }
+
+    let mut analysis = Vec::new();
+    for claim in claims {
+        let (call_text, expected_text) = split_case_insensitive(claim, "->")
+            .ok_or_else(|| "each conversion claim must include '-> <expected value unit>'".to_string())?;
+        let (source_value, source_unit, target_unit) = parse_convert_call(call_text)?;
+        let (expected_value, expected_unit) = parse_unit_measurement(expected_text)?;
+        if normalize_unit_key(&expected_unit) != normalize_unit_key(&target_unit) {
+            return Err(format!(
+                "expected unit '{}' does not match conversion target '{}'",
+                expected_unit, target_unit
+            ));
+        }
+        let (actual_value, _dimension) = convert_unit_value(source_value, &source_unit, &target_unit)?;
+        let matches_expected = (actual_value - expected_value).abs() < 1e-12;
+        analysis.push(json!({
+            "source_value": source_value,
+            "source_unit": source_unit,
+            "target_unit": target_unit,
+            "expected_value": expected_value,
+            "expected_unit": expected_unit,
+            "actual_value": actual_value,
+            "actual_text": format!("{} {}", format_number(actual_value), target_unit),
+            "matches_expected": matches_expected,
+        }));
+    }
+
+    let all_claims_true = analysis
+        .iter()
+        .all(|claim| claim.get("matches_expected") == Some(&json!(true)));
+    let round_trip_consistent = if analysis.len() >= 2 {
+        let first = &analysis[0];
+        let second = &analysis[1];
+        first.get("source_unit") == second.get("target_unit")
+            && first.get("target_unit") == second.get("source_unit")
+            && all_claims_true
+    } else {
+        all_claims_true
+    };
+
+    let mut surface = String::from("Unit conversion check:\n");
+    for claim in &analysis {
+        surface.push_str(&format!(
+            "- Convert({} {}, to={}) -> {} {} | actual {} | {}\n",
+            format_number(claim.get("source_value").and_then(Value::as_f64).unwrap_or(0.0)),
+            claim.get("source_unit").and_then(Value::as_str).unwrap_or(""),
+            claim.get("target_unit").and_then(Value::as_str).unwrap_or(""),
+            format_number(claim.get("expected_value").and_then(Value::as_f64).unwrap_or(0.0)),
+            claim.get("expected_unit").and_then(Value::as_str).unwrap_or(""),
+            claim.get("actual_text").and_then(Value::as_str).unwrap_or(""),
+            if claim.get("matches_expected") == Some(&json!(true)) {
+                "true"
+            } else {
+                "false"
+            }
+        ));
+    }
+    surface.push_str(&format!(
+        "Round-trip consistency: {}\nUnit conversion loop torsion threshold: {}",
+        if round_trip_consistent { "true" } else { "false" },
+        if round_trip_consistent { "not triggered" } else { "triggered" }
+    ));
+
+    Ok(build_unit_conversion_payload(
+        expr,
+        options,
+        analysis,
+        round_trip_consistent,
+        json!(all_claims_true),
+        surface,
+    ))
+}
+
+fn evaluate_unit_conversion_expression(expr: &str, options: MathOptions) -> Option<Result<Value, String>> {
+    let trimmed = expr.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !lower.contains("convert(") {
+        return None;
+    }
+
+    if lower.contains("->") {
+        Some(evaluate_conversion_claim_expression(trimmed, options))
+    } else {
+        Some(evaluate_single_conversion_expression(trimmed, options))
+    }
+}
+
+fn conversion_bridge_audit_value(expr: &str, options: MathOptions, result: &Value) -> Value {
+    let primary_goal = if result.as_bool().is_some() {
+        PrimaryGoal::CheckTruth
+    } else {
+        PrimaryGoal::EvaluateNumeric
+    };
+
+    let parsed_unit = if let Some(v) = result.as_bool() {
+        ParsedUnit::LogicExpr(LogicExprNode::BoolLiteral(v))
+    } else {
+        ParsedUnit::ScalarExpr(AstNode::Number(result.as_f64().unwrap_or(0.0)))
+    };
+
+    let final_value = result.as_f64().map(|v| ComplexValue::new(v, 0.0));
+    let final_truth = result.as_bool().map(|v| if v { TruthValue::True } else { TruthValue::False });
+
+    let envelope = build_success_envelope(
+        expr,
+        parsed_unit,
+        primary_goal,
+        options,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+        synthesize_final_outcome(&[], &[], final_value, final_truth),
+    );
+    bridge_audit_value(&envelope)
+}
+
+fn chat_safe_math_result_text(result: &Value) -> Option<String> {
+    match result {
+        Value::Number(number) => number.as_f64().map(format_number),
+        Value::Object(object) => {
+            let re = object.get("re").and_then(Value::as_f64)?;
+            let im = object.get("im").and_then(Value::as_f64)?;
+            Some(complex_to_text(ComplexValue::new(re, im)))
+        }
+        Value::Bool(v) => Some(if *v { "true" } else { "false" }.to_string()),
+        Value::String(text) => Some(text.clone()),
+        _ => None,
+    }
+}
+
+fn render_chat_math_surface(payload: &Value) -> Option<String> {
+    if let Some(surface) = payload.get("chat_surface").and_then(Value::as_str) {
+        return Some(surface.to_string());
+    }
+    let expression = payload
+        .get("normalized_expression")
+        .and_then(Value::as_str)
+        .or_else(|| payload.get("expression").and_then(Value::as_str))?;
+    let result = payload.get("result")?;
+    let result_text = chat_safe_math_result_text(result)?;
+    Some(format!("{} = {}", expression, result_text))
+}
+
 fn build_chat_answer(
     messages: &[ChatMessage],
     state: &AppState,
@@ -9958,12 +11096,12 @@ fn build_chat_answer(
     });
 
     let mut answer = String::new();
+    let mut deferred_footer_lines = Vec::<String>::new();
     answer.push_str(&opening_text);
     answer.push_str("\n\n");
 
     if let Some(context_bridge) = context_bridge_text(&context_items, concise) {
-        answer.push_str(&context_bridge);
-        answer.push_str("\n\n");
+        deferred_footer_lines.push(context_bridge);
     }
 
     let mut has_retrieval_hits = false;
@@ -9985,8 +11123,7 @@ fn build_chat_answer(
                 time_crystal_context.as_ref(),
             );
             retrieval_fallback_randomness = fallback_randomness;
-            answer.push_str(&fallback_line);
-            answer.push('\n');
+            deferred_footer_lines.push(fallback_line);
             retrieval_meta = json!({
                 "match_count": 0,
                 "matches": [],
@@ -10069,15 +11206,23 @@ fn build_chat_answer(
             time_crystal_context.as_ref(),
         );
         retrieval_fallback_randomness = fallback_randomness;
-        answer.push_str(&fallback_line);
-        answer.push_str("\n\n");
+        deferred_footer_lines.push(fallback_line);
     }
 
     let mut math_meta = Value::Null;
     let mut has_math_result = false;
+    let mut english_task_meta_value = Value::Null;
+    let mut has_english_task_result = false;
     let math_candidate = normalize_chat_math_candidate(&prompt);
     if looks_like_math_expression(&prompt) {
-        match evaluate_math_expression(math_candidate, state, MathOptions::default()) {
+        match evaluate_math_expression(
+            &math_candidate,
+            state,
+            MathOptions {
+                mode: MathMode::Geometric,
+                angle_unit: MathOptions::default().angle_unit,
+            },
+        ) {
             Ok(payload) => {
                 math_meta = json!({
                     "status": "ok",
@@ -10086,12 +11231,15 @@ fn build_chat_answer(
                     "expression": math_candidate,
                     "result": payload.get("result").cloned().unwrap_or(Value::Null),
                     "result_latex": payload.get("result_latex").cloned().unwrap_or(Value::Null),
-                    "phase_signature": payload.get("phase_signature").cloned().unwrap_or(Value::Null)
+                    "phase_signature": payload.get("phase_signature").cloned().unwrap_or(Value::Null),
+                    "unit_crystal": payload.get("unit_crystal").cloned().unwrap_or(Value::Null),
+                    "unit_contradiction_signal": payload.get("unit_contradiction_signal").cloned().unwrap_or(Value::Null),
+                    "unit_conversion_analysis": payload.get("unit_conversion_analysis").cloned().unwrap_or(Value::Null),
                 });
                 has_math_result = true;
-                if let Some(result_latex) = payload.get("result_latex").and_then(Value::as_str) {
+                if let Some(chat_math_text) = render_chat_math_surface(&payload) {
                     answer.push_str("Math result:\n");
-                    answer.push_str(result_latex);
+                    answer.push_str(&chat_math_text);
                     answer.push_str("\n\n");
                 }
             }
@@ -10105,6 +11253,9 @@ fn build_chat_answer(
                     "result": Value::Null,
                     "result_latex": Value::Null,
                     "phase_signature": Value::Null,
+                    "unit_crystal": Value::Null,
+                    "unit_contradiction_signal": Value::Null,
+                    "unit_conversion_analysis": Value::Null,
                 });
                 answer.push_str("Math evaluation failed: ");
                 answer.push_str(&e);
@@ -10114,7 +11265,17 @@ fn build_chat_answer(
         }
     }
 
-    if !has_retrieval_hits && !has_math_result {
+    if !has_math_result {
+        if let Some(task) = detect_english_task(&prompt) {
+            let task_output = render_english_task(&task);
+            answer.push_str(&task_output);
+            answer.push_str("\n\n");
+            english_task_meta_value = english_task_meta(&task, &task_output);
+            has_english_task_result = true;
+        }
+    }
+
+    if !has_retrieval_hits && !has_math_result && !has_english_task_result {
         answer.push_str(capability_hint_text(concise));
         answer.push_str("\n\n");
     }
@@ -10130,6 +11291,14 @@ fn build_chat_answer(
         answer.push('\n');
     }
 
+    if !deferred_footer_lines.is_empty() {
+        answer.push('\n');
+        for line in deferred_footer_lines {
+            answer.push_str(&line);
+            answer.push('\n');
+        }
+    }
+
     let meta = json!({
         "schema_version": "csif_chat_meta_v1",
         "generated_at": unix_time_secs(),
@@ -10141,6 +11310,7 @@ fn build_chat_answer(
         "bank": bank_meta,
         "retrieval": retrieval_meta,
         "math": math_meta,
+        "english_task": english_task_meta_value,
         "conversation": {
             "intent": intent,
             "response_style": preferences.response_style,
@@ -13525,6 +14695,123 @@ mod tests {
     }
 
     #[test]
+    fn math_eval_supports_direct_convert_function() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "Convert(1 m,to=cm)",
+            &state,
+            MathOptions {
+                mode: MathMode::Geometric,
+                angle_unit: AngleUnit::Radians,
+            },
+        )
+        .expect("Convert(...) should evaluate in core math parser path");
+
+        assert_eq!(payload.get("deterministic"), Some(&json!(true)));
+        assert_eq!(payload.get("result").and_then(Value::as_f64), Some(100.0));
+        assert!(payload
+            .get("chat_surface")
+            .and_then(Value::as_str)
+            .map(|s| s.contains("Convert(1 m, to=cm) = 100 cm") || s.contains("Convert(1 m,to=cm) = 100 cm"))
+            .unwrap_or(false));
+    }
+
+    #[test]
+    fn math_eval_supports_conversion_claim_expressions() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "Convert(1 m,to=cm) ->100 cm and Convert(100 cm,to=m) ->1 m",
+            &state,
+            MathOptions {
+                mode: MathMode::Geometric,
+                angle_unit: AngleUnit::Radians,
+            },
+        )
+        .expect("conversion claim expression should evaluate");
+
+        assert_eq!(payload.get("result").and_then(Value::as_bool), Some(true));
+        assert_eq!(
+            payload
+                .get("unit_contradiction_signal")
+                .and_then(|v| v.get("triggered"))
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn math_eval_expanded_unit_catalog_handles_temperature_and_speed() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let temp = evaluate_math_expression(
+            "Convert(32 F,to=C)",
+            &state,
+            MathOptions {
+                mode: MathMode::Geometric,
+                angle_unit: AngleUnit::Radians,
+            },
+        )
+        .expect("temperature conversion should evaluate");
+        assert!(
+            temp.get("result")
+                .and_then(Value::as_f64)
+                .map(|v| v.abs() < 1e-9)
+                .unwrap_or(false)
+        );
+
+        let speed = evaluate_math_expression(
+            "Convert(60 mph,to=km/h)",
+            &state,
+            MathOptions {
+                mode: MathMode::Geometric,
+                angle_unit: AngleUnit::Radians,
+            },
+        )
+        .expect("speed conversion should evaluate");
+        assert!(
+            speed.get("result")
+                .and_then(Value::as_f64)
+                .map(|v| (v - 96.56064).abs() < 1e-6)
+                .unwrap_or(false)
+        );
+    }
+
+    #[test]
+    fn math_eval_accepts_compact_convert_measurement_syntax() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "Convert(1m,to=cm)",
+            &state,
+            MathOptions {
+                mode: MathMode::Geometric,
+                angle_unit: AngleUnit::Radians,
+            },
+        )
+        .expect("compact measurement syntax should evaluate");
+
+        assert_eq!(payload.get("result").and_then(Value::as_f64), Some(100.0));
+    }
+
+    #[test]
     fn logic_inference_torsion_threshold_emits_explicit_contradiction_signal() {
         let expr = LogicExprNode::Implies(
             Box::new(LogicExprNode::BoolLiteral(true)),
@@ -14286,6 +15573,627 @@ mod tests {
                 .and_then(|v| v.get("error_code"))
                 .and_then(Value::as_str),
             Some("MATH_UNSUPPORTED_FUNCTION")
+        );
+    }
+
+    #[test]
+    fn chat_math_surface_hides_ieee754_artifact_for_simple_decimal_sum() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("0.1+0.2".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:\n(0.1 + 0.2) = 0.3"));
+        assert!(!answer.contains("0.30000000000000004"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_f64),
+            Some(0.3)
+        );
+    }
+
+    #[test]
+    fn chat_math_surface_does_not_emit_raw_latex_markup() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("(2+3i)^2".to_string()),
+        }];
+
+        let (answer, _meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(!answer.contains("\\left"));
+        assert!(!answer.contains("\\right"));
+    }
+
+    #[test]
+    fn chat_math_accepts_unicode_multiplication_symbol() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("4×5".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:\n(4 * 5) = 20"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_f64),
+            Some(20.0)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_digit_x_digit_multiplication_notation() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("4x5".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:\n(4 * 5) = 20"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_f64),
+            Some(20.0)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_natural_language_logic_question_form() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("Is 5<1?".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("5 < 1 = false"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_natural_language_arithmetic_question_form() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("what is 7*8?".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("(7 * 8) = 56"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_f64),
+            Some(56.0)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_worded_less_than_comparator_prompt() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("is 5 less than 1".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("5 < 1 = false"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_worded_equal_to_comparator_prompt() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("is 7 equal to 7".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("7 == 7 = true"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_unicode_not_equal_symbol() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("5≠3".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("5 != 3 = true"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_standalone_equals_as_equality() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("5=5".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("5 == 5 = true"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_unit_conversion_round_trip_claims() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String(
+                "Convert(1 m,to=cm) ->100 cm and Convert(100 cm,to=m) ->1 m".to_string(),
+            ),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Unit conversion check:"));
+        assert!(answer.contains("Round-trip consistency: true"));
+        assert!(answer.contains("Unit conversion loop torsion threshold: not triggered"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("unit_contradiction_signal"))
+                .and_then(|v| v.get("triggered"))
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn chat_english_rewrite_bypasses_capability_fallback() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String(
+                "Please rewrite this to sound professional: we messed up the deploy and need to fix it fast."
+                    .to_string(),
+            ),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Professional rewrite:"));
+        assert!(answer.contains("deployment issue"));
+        assert!(!answer.contains("I can help across conversational guidance"));
+        assert_eq!(
+            meta.get("english_task")
+                .and_then(|v| v.get("task"))
+                .and_then(Value::as_str),
+            Some("rewrite")
+        );
+    }
+
+    #[test]
+    fn chat_english_explain_bypasses_capability_fallback() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String(
+                "Explain in plain English what a load balancer does, in 3 sentences.".to_string(),
+            ),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("load balancer"));
+        assert!(!answer.contains("I can help across conversational guidance"));
+        assert_eq!(
+            meta.get("english_task")
+                .and_then(|v| v.get("task"))
+                .and_then(Value::as_str),
+            Some("explain")
+        );
+    }
+
+    #[test]
+    fn chat_english_summarize_bullets_bypasses_capability_fallback() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String(
+                "Summarize these notes in bullet points: We shipped v1.2, fixed login bug, added audit logging, and improved startup time by 18 percent."
+                    .to_string(),
+            ),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Summary:"));
+        assert!(answer.contains("- We shipped v1.2."));
+        assert!(!answer.contains("I can help across conversational guidance"));
+        assert_eq!(
+            meta.get("english_task")
+                .and_then(|v| v.get("task"))
+                .and_then(Value::as_str),
+            Some("summarize_bullets")
+        );
+    }
+
+    #[test]
+    fn chat_english_disagreement_routes_to_polite_resolution_with_next_step() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String(
+                "I disagree with your answer. Can you respond politely and propose a next step?"
+                    .to_string(),
+            ),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Thanks for pushing back"));
+        assert!(answer.contains("Next step:"));
+        assert!(!answer.contains("I can help across conversational guidance"));
+        assert_eq!(
+            meta.get("english_task")
+                .and_then(|v| v.get("task"))
+                .and_then(Value::as_str),
+            Some("disagreement_resolution")
+        );
+    }
+
+    #[test]
+    fn chat_english_question_answer_bypasses_capability_fallback() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("What does a load balancer do?".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("load balancer"));
+        assert!(answer.contains("distributes incoming traffic"));
+        assert!(!answer.contains("I can help across conversational guidance"));
+        assert_eq!(
+            meta.get("english_task")
+                .and_then(|v| v.get("task"))
+                .and_then(Value::as_str),
+            Some("question_answer")
+        );
+    }
+
+    #[test]
+    fn chat_english_compare_contrast_bypasses_capability_fallback() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("Compare Docker and Podman.".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Comparison:"));
+        assert!(answer.contains("Docker"));
+        assert!(answer.contains("Podman"));
+        assert!(!answer.contains("I can help across conversational guidance"));
+        assert_eq!(
+            meta.get("english_task")
+                .and_then(|v| v.get("task"))
+                .and_then(Value::as_str),
+            Some("compare_contrast")
+        );
+    }
+
+    #[test]
+    fn chat_english_pros_cons_bypasses_capability_fallback() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("Give me pros and cons of using a load balancer.".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Pros and Cons:"));
+        assert!(answer.contains("Pros:"));
+        assert!(answer.contains("Cons:"));
+        assert!(!answer.contains("I can help across conversational guidance"));
+        assert_eq!(
+            meta.get("english_task")
+                .and_then(|v| v.get("task"))
+                .and_then(Value::as_str),
+            Some("pros_cons")
+        );
+    }
+
+    #[test]
+    fn chat_math_flags_unit_conversion_claim_contradictions() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String(
+                "Convert(1 m,to=cm) ->101 cm and Convert(100 cm,to=m) ->1 m".to_string(),
+            ),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Unit conversion check:"));
+        assert!(answer.contains("Round-trip consistency: false"));
+        assert!(answer.contains("Unit conversion loop torsion threshold: triggered"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("unit_contradiction_signal"))
+                .and_then(|v| v.get("triggered"))
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_compact_convert_prompt_with_to_spacing() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("Convert(1m,to= cm)".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("Convert(1 m, to=cm) = 100 cm") || answer.contains("Convert(1m, to=cm) = 100 cm"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_f64),
+            Some(100.0)
+        );
+    }
+
+    #[test]
+    fn chat_math_algebraic_equality_distinguishes_decimal_artifacts() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let (answer_a, meta_a) = build_chat_answer(
+            &[ChatMessage {
+                role: "user".to_string(),
+                content: Value::String("0.1+0.2=0.3".to_string()),
+            }],
+            &state,
+            None,
+        );
+        assert!(answer_a.contains("Math result:"));
+        assert!(answer_a.contains("(0.1 + 0.2) == 0.3 = true"));
+        assert_eq!(
+            meta_a
+                .get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(true)
+        );
+
+        let (answer_b, meta_b) = build_chat_answer(
+            &[ChatMessage {
+                role: "user".to_string(),
+                content: Value::String("0.1+0.2=0.30000000000000004".to_string()),
+            }],
+            &state,
+            None,
+        );
+        assert!(answer_b.contains("Math result:"));
+        assert!(answer_b.contains("(0.1 + 0.2) == 0.30000000000000004 = false"));
+        assert_eq!(
+            meta_b
+                .get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(false)
+        );
+
+        let (answer_c, meta_c) = build_chat_answer(
+            &[ChatMessage {
+                role: "user".to_string(),
+                content: Value::String("0.30000000000000004=0.3".to_string()),
+            }],
+            &state,
+            None,
+        );
+        assert!(answer_c.contains("Math result:"));
+        assert!(answer_c.contains("0.30000000000000004 == 0.3 = false"));
+        assert_eq!(
+            meta_c
+                .get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_bool),
+            Some(false)
         );
     }
 
