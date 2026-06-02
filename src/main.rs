@@ -1833,7 +1833,9 @@ fn c_si(x: ComplexValue) -> Result<ComplexValue, String> {
     let x_val = x.re;
     let mut sum = ComplexValue::new(0.0, 0.0);
     for n in 0..200 {
-        let coeff = if n % 2 == 0 { -1.0 } else { 1.0 };
+        // Si(x) = sum_{n=0}^inf (-1)^n x^(2n+1) / ((2n+1)(2n+1)!).
+        // Even n must be positive; odd n must be negative.
+        let coeff = if n % 2 == 0 { 1.0 } else { -1.0 };
         let k = (2 * n + 1) as f64;
         let fact = (1..=(2*n+1)).fold(1.0, |a, v| a * v as f64);
         let x_pow = x_val.powi((2*n + 1) as i32);
@@ -13662,6 +13664,88 @@ mod tests {
                 .expect("result_latex should exist")
                 .contains("=")
         );
+    }
+
+    #[test]
+    fn math_eval_sine_integral_uses_standard_sign_convention() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let payload = evaluate_math_expression("si(2.5)", &state, MathOptions::default())
+            .expect("si evaluation should pass");
+        let result = payload
+            .get("result")
+            .and_then(Value::as_f64)
+            .expect("result should be numeric");
+
+        // Standard Si(2.5) is positive and approximately 1.7785201734438265.
+        assert!(result > 0.0);
+        assert!((result - 1.7785201734438265).abs() < 1e-12);
+    }
+
+    #[test]
+    fn math_eval_special_functions_light_pass_contract() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let eval_real = |expr: &str| -> f64 {
+            let payload = evaluate_math_expression(expr, &state, MathOptions::default())
+                .unwrap_or_else(|_| panic!("{} should evaluate", expr));
+            payload
+                .get("result")
+                .and_then(Value::as_f64)
+                .unwrap_or_else(|| panic!("{} should yield a real result", expr))
+        };
+
+        let si = eval_real("si(2.5)");
+        assert!(si > 1.7 && si < 1.9, "si(2.5) out of expected range: {}", si);
+
+        let ci = eval_real("ci(1.8)");
+        assert!(ci > 0.0 && ci < 0.2, "ci(1.8) out of expected range: {}", ci);
+
+        let fresnel_c = eval_real("fresnelc(2)");
+        assert!(
+            fresnel_c > 0.3 && fresnel_c < 0.45,
+            "fresnelc(2) out of expected range: {}",
+            fresnel_c
+        );
+
+        let fresnel_s = eval_real("fresnels(1.5)");
+        assert!(
+            fresnel_s > 0.2 && fresnel_s < 0.4,
+            "fresnels(1.5) out of expected range: {}",
+            fresnel_s
+        );
+
+        let ei = eval_real("ei(0.5)");
+        assert!(ei > 0.4 && ei < 0.5, "ei(0.5) out of expected range: {}", ei);
+
+        let li = eval_real("li(2)");
+        assert!(li > 1.0 && li < 1.1, "li(2) out of expected range: {}", li);
+
+        let w = eval_real("w(2.5)");
+        assert!(w > 0.9 && w < 1.0, "w(2.5) out of expected range: {}", w);
+
+        let ai = eval_real("ai(1.5)");
+        assert!(ai > 0.2 && ai < 0.35, "ai(1.5) out of expected range: {}", ai);
+
+        let bi = eval_real("bi(0.5)");
+        assert!(bi > 0.45 && bi < 0.7, "bi(0.5) out of expected range: {}", bi);
+
+        let theta4 = eval_real("theta4(0.2, 0.5)");
+        assert!(
+            theta4 > 1.0 && theta4 < 1.4,
+            "theta4(0.2, 0.5) out of expected range: {}",
+            theta4
+        );
+
+        let sinc = eval_real("sinc(3)");
+        assert!(sinc > 0.03 && sinc < 0.06, "sinc(3) out of expected range: {}", sinc);
     }
 
     #[test]
