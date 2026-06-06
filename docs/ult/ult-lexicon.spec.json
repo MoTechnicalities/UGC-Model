@@ -1,0 +1,773 @@
+{
+  "spec_id": "ult_lexicon_extension_spec",
+  "spec_version": "0.1.0",
+  "extends": {
+    "ult_spec_path": "docs/ult/ult.spec.json",
+    "ult_spec_id": "ult_package_spec",
+    "ult_spec_version": "1.0.0",
+    "core_tuple": [
+      "family_id",
+      "canonical_form",
+      "ontology_tags",
+      "dimensionality_inference",
+      "boundary_condition_classification"
+    ]
+  },
+  "target_languages": [
+    "en",
+    "es"
+  ],
+  "predicate_inventory": [
+    {
+      "family_id": "delivery_event",
+      "canonical_form": "arrive_late(package)",
+      "ontology_tags": [
+        "logistics",
+        "transport",
+        "time"
+      ],
+      "dimensionality_inference": "event_time",
+      "boundary_condition_classification": "temporal_constraint",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "arrive_late",
+          "pattern_templates": [
+            "arrive_late(package)"
+          ]
+        },
+        "es": {
+          "lemma": "arrive_late_es",
+          "pattern_templates": [
+            "arrive_late(package)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "collective_state_shift",
+      "canonical_form": "become_silent(crowd)",
+      "ontology_tags": [
+        "group_state",
+        "emotion",
+        "social_scene"
+      ],
+      "dimensionality_inference": "narrative_event",
+      "boundary_condition_classification": "temporal_dependency",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "become_silent",
+          "pattern_templates": [
+            "become_silent(crowd)"
+          ]
+        },
+        "es": {
+          "lemma": "become_silent_es",
+          "pattern_templates": [
+            "become_silent(crowd)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "cooperative_action",
+      "canonical_form": "cooperate(they, finish(task))",
+      "ontology_tags": [
+        "collaboration",
+        "action",
+        "goal"
+      ],
+      "dimensionality_inference": "social_process",
+      "boundary_condition_classification": "shared_intent",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "cooperate",
+          "pattern_templates": [
+            "cooperate(they, finish(task))"
+          ]
+        },
+        "es": {
+          "lemma": "cooperate_es",
+          "pattern_templates": [
+            "cooperate(they, finish(task))"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "communicative_act",
+      "canonical_form": "explain(teacher, theorem)",
+      "ontology_tags": [
+        "information_transfer",
+        "education",
+        "agent_action"
+      ],
+      "dimensionality_inference": "discourse_event",
+      "boundary_condition_classification": "n/a",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "explain",
+          "pattern_templates": [
+            "explain(teacher, theorem)"
+          ]
+        },
+        "es": {
+          "lemma": "explain_es",
+          "pattern_templates": [
+            "explain(teacher, theorem)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "agent_action_location_change",
+      "canonical_form": "find_alternate_entry(Dave, ship)",
+      "ontology_tags": [
+        "agent_motion",
+        "problem_solving",
+        "access_change"
+      ],
+      "dimensionality_inference": "narrative_event",
+      "boundary_condition_classification": "implicit_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "find_alternate_entry",
+          "pattern_templates": [
+            "find_alternate_entry(Dave, ship)"
+          ]
+        },
+        "es": {
+          "lemma": "find_alternate_entry_es",
+          "pattern_templates": [
+            "find_alternate_entry(Dave, ship)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "physical_law",
+      "canonical_form": "freeze(water, 0C)",
+      "ontology_tags": [
+        "phase_change",
+        "thermodynamics",
+        "material_process"
+      ],
+      "dimensionality_inference": "physical_process",
+      "boundary_condition_classification": "environmental_constraint",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "freeze",
+          "pattern_templates": [
+            "freeze(water, 0C)"
+          ]
+        },
+        "es": {
+          "lemma": "freeze_es",
+          "pattern_templates": [
+            "freeze(water, 0C)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "conditional_causal_relation",
+      "canonical_form": "if(rise(pressure)) then open(valve)",
+      "ontology_tags": [
+        "condition",
+        "causality",
+        "mechanical_system"
+      ],
+      "dimensionality_inference": "physical_process",
+      "boundary_condition_classification": "conditional_dependency",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "if",
+          "pattern_templates": [
+            "if(rise(pressure)) then open(valve)"
+          ]
+        },
+        "es": {
+          "lemma": "if_es",
+          "pattern_templates": [
+            "if(rise(pressure)) then open(valve)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "metaphorical_mapping",
+      "canonical_form": "map(hope, flame)",
+      "ontology_tags": [
+        "metaphor",
+        "emotional_state",
+        "symbolic_transfer"
+      ],
+      "dimensionality_inference": "abstract_concept",
+      "boundary_condition_classification": "implicit_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "map",
+          "pattern_templates": [
+            "map(hope, flame)"
+          ]
+        },
+        "es": {
+          "lemma": "map_es",
+          "pattern_templates": [
+            "map(hope, flame)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "spatial_relation",
+      "canonical_form": "on(key, table)",
+      "ontology_tags": [
+        "location",
+        "object",
+        "support_surface"
+      ],
+      "dimensionality_inference": "spatial_relation",
+      "boundary_condition_classification": "explicit_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "on",
+          "pattern_templates": [
+            "on(key, table)"
+          ]
+        },
+        "es": {
+          "lemma": "on_es",
+          "pattern_templates": [
+            "on(key, table)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "event_causation",
+      "canonical_form": "overflow(river, storm)",
+      "ontology_tags": [
+        "causal_event",
+        "weather",
+        "motion"
+      ],
+      "dimensionality_inference": "physical_process",
+      "boundary_condition_classification": "temporal_dependency",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "overflow",
+          "pattern_templates": [
+            "overflow(river, storm)"
+          ]
+        },
+        "es": {
+          "lemma": "overflow_es",
+          "pattern_templates": [
+            "overflow(river, storm)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "possession_relation",
+      "canonical_form": "possess(Mary, lamb)",
+      "ontology_tags": [
+        "possession",
+        "agent",
+        "entity"
+      ],
+      "dimensionality_inference": "logical_relation",
+      "boundary_condition_classification": "n/a",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "possess",
+          "pattern_templates": [
+            "possess(Mary, lamb)"
+          ]
+        },
+        "es": {
+          "lemma": "possess_es",
+          "pattern_templates": [
+            "possess(Mary, lamb)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "possession_relation",
+      "canonical_form": "possess(X, Y)",
+      "ontology_tags": [
+        "possession"
+      ],
+      "dimensionality_inference": "logical_relation",
+      "boundary_condition_classification": "n/a",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "possess",
+          "pattern_templates": [
+            "possess(X, Y)"
+          ]
+        },
+        "es": {
+          "lemma": "possess_es",
+          "pattern_templates": [
+            "possess(X, Y)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "predictive_statement",
+      "canonical_form": "predict(model, rain)",
+      "ontology_tags": [
+        "forecast",
+        "inference",
+        "weather"
+      ],
+      "dimensionality_inference": "logical_relation",
+      "boundary_condition_classification": "evidential_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "predict",
+          "pattern_templates": [
+            "predict(model, rain)"
+          ]
+        },
+        "es": {
+          "lemma": "predict_es",
+          "pattern_templates": [
+            "predict(model, rain)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "refusal_act",
+      "canonical_form": "refuse(Anna, request)",
+      "ontology_tags": [
+        "agent_refusal",
+        "social_action",
+        "decision"
+      ],
+      "dimensionality_inference": "social_interaction",
+      "boundary_condition_classification": "explicit_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "refuse",
+          "pattern_templates": [
+            "refuse(Anna, request)"
+          ]
+        },
+        "es": {
+          "lemma": "refuse_es",
+          "pattern_templates": [
+            "refuse(Anna, request)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "temporal_schedule_change",
+      "canonical_form": "reschedule(meeting, Tuesday)",
+      "ontology_tags": [
+        "time_change",
+        "event",
+        "schedule"
+      ],
+      "dimensionality_inference": "temporal_relation",
+      "boundary_condition_classification": "explicit_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "reschedule",
+          "pattern_templates": [
+            "reschedule(meeting, Tuesday)"
+          ]
+        },
+        "es": {
+          "lemma": "reschedule_es",
+          "pattern_templates": [
+            "reschedule(meeting, Tuesday)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "state_transition",
+      "canonical_form": "run(child)",
+      "ontology_tags": [
+        "active_motion",
+        "agent",
+        "activity"
+      ],
+      "dimensionality_inference": "physical_process",
+      "boundary_condition_classification": "present_state",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "run",
+          "pattern_templates": [
+            "run(child)"
+          ]
+        },
+        "es": {
+          "lemma": "run_es",
+          "pattern_templates": [
+            "run(child)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "state_transition",
+      "canonical_form": "sleep(child)",
+      "ontology_tags": [
+        "rest_state",
+        "agent",
+        "activity"
+      ],
+      "dimensionality_inference": "physical_process",
+      "boundary_condition_classification": "present_state",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "sleep",
+          "pattern_templates": [
+            "sleep(child)"
+          ]
+        },
+        "es": {
+          "lemma": "sleep_es",
+          "pattern_templates": [
+            "sleep(child)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "persistence_state",
+      "canonical_form": "stand(bridge)",
+      "ontology_tags": [
+        "structure",
+        "durability",
+        "time"
+      ],
+      "dimensionality_inference": "physical_state",
+      "boundary_condition_classification": "implicit_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "stand",
+          "pattern_templates": [
+            "stand(bridge)"
+          ]
+        },
+        "es": {
+          "lemma": "stand_es",
+          "pattern_templates": [
+            "stand(bridge)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "machine_state_change",
+      "canonical_form": "stop(machine)",
+      "ontology_tags": [
+        "mechanical_system",
+        "failure",
+        "state_change"
+      ],
+      "dimensionality_inference": "physical_process",
+      "boundary_condition_classification": "implicit_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "stop",
+          "pattern_templates": [
+            "stop(machine)"
+          ]
+        },
+        "es": {
+          "lemma": "stop_es",
+          "pattern_templates": [
+            "stop(machine)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "geometric_property",
+      "canonical_form": "straight(line)",
+      "ontology_tags": [
+        "geometry",
+        "shape",
+        "relation"
+      ],
+      "dimensionality_inference": "spatial_relation",
+      "boundary_condition_classification": "n/a",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "straight",
+          "pattern_templates": [
+            "straight(line)"
+          ]
+        },
+        "es": {
+          "lemma": "straight_es",
+          "pattern_templates": [
+            "straight(line)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "trigger_cascade",
+      "canonical_form": "trigger(alarm, response)",
+      "ontology_tags": [
+        "causality",
+        "alert",
+        "system_response"
+      ],
+      "dimensionality_inference": "physical_process",
+      "boundary_condition_classification": "causal_dependency",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "trigger",
+          "pattern_templates": [
+            "trigger(alarm, response)"
+          ]
+        },
+        "es": {
+          "lemma": "trigger_es",
+          "pattern_templates": [
+            "trigger(alarm, response)"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    },
+    {
+      "family_id": "epistemic_uncertainty",
+      "canonical_form": "wonder(speaker, come(she))",
+      "ontology_tags": [
+        "uncertainty",
+        "cognition",
+        "future_event"
+      ],
+      "dimensionality_inference": "mental_state",
+      "boundary_condition_classification": "epistemic_context",
+      "planned": false,
+      "realizations": {
+        "en": {
+          "lemma": "wonder",
+          "pattern_templates": [
+            "wonder(speaker, come(she))"
+          ]
+        },
+        "es": {
+          "lemma": "wonder_es",
+          "pattern_templates": [
+            "wonder(speaker, come(she))"
+          ]
+        }
+      },
+      "provenance": {
+        "sources": [
+          "docs/ult/ult.spec.json.examples",
+          "tests/conformance/ult_reasoning_regression.json.cases"
+        ],
+        "extraction_method": "canonical_form_merge",
+        "confidence": "seed"
+      }
+    }
+  ],
+  "auditability_contract": {
+    "canonicalization": "json_sort_keys",
+    "hash_algorithm": "sha256",
+    "notes": "Initial multilingual seed for predicate-first lexicon extension."
+  }
+}

@@ -1,0 +1,198 @@
+{
+  "spec_id": "ult_lexicon_regression_corpus",
+  "spec_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "object_input_normalizes_sorts_and_hashes",
+      "input": {
+        "entries": [
+          {
+            "canonical_form": "sleep(X)",
+            "family_id": "state_transition",
+            "ontology_tags": ["activity", "rest_state", "agent", "rest_state"],
+            "dimensionality_inference": "physical_process",
+            "boundary_condition_classification": "present_state",
+            "languages": {
+              "EN": {
+                "lemmas": ["sleep", "sleep"],
+                "patterns": ["X is sleeping", "X sleeps"]
+              },
+              "sw": {
+                "lemmas": ["lala"],
+                "patterns": ["X analala", "X amelala"]
+              }
+            }
+          },
+          {
+            "canonical_form": "possess(X,Y)",
+            "family_id": "possession_relation",
+            "ontology_tags": ["entity", "agent", "possession"],
+            "dimensionality_inference": "logical_relation",
+            "boundary_condition_classification": "n/a",
+            "languages": {
+              "fi": {
+                "lemmas": ["omistaa"],
+                "patterns": ["X omistaa Y"]
+              },
+              "en": {
+                "lemmas": ["have", "own"],
+                "patterns": ["X has Y", "X owns Y"]
+              }
+            }
+          }
+        ]
+      },
+      "expected_output": {
+        "audit": {
+          "canonicalization": "json_sort_keys",
+          "entries_sha256": "4da16abda855ae136b90bb354239ea7c8ba63d9b60fe5c0daff610dea1062045",
+          "hash_algorithm": "sha256",
+          "realization_hash_sha256": "deca81c36701eb09843c5ae41a403d8add40cb344e6b8d32ec426cdebc41929c"
+        },
+        "entries": [
+          {
+            "boundary_condition_classification": "n/a",
+            "canonical_form": "possess(X,Y)",
+            "dimensionality_inference": "logical_relation",
+            "entry_id": "fe7435cfc246930a",
+            "family_id": "possession_relation",
+            "languages": {
+              "en": {
+                "lemmas": [
+                  "have",
+                  "own"
+                ],
+                "patterns": [
+                  "X has Y",
+                  "X owns Y"
+                ]
+              },
+              "fi": {
+                "lemmas": [
+                  "omistaa"
+                ],
+                "patterns": [
+                  "X omistaa Y"
+                ]
+              }
+            },
+            "ontology_tags": [
+              "agent",
+              "entity",
+              "possession"
+            ]
+          },
+          {
+            "boundary_condition_classification": "present_state",
+            "canonical_form": "sleep(X)",
+            "dimensionality_inference": "physical_process",
+            "entry_id": "4e42c06755ec23d9",
+            "family_id": "state_transition",
+            "languages": {
+              "en": {
+                "lemmas": [
+                  "sleep"
+                ],
+                "patterns": [
+                  "X is sleeping",
+                  "X sleeps"
+                ]
+              },
+              "sw": {
+                "lemmas": [
+                  "lala"
+                ],
+                "patterns": [
+                  "X amelala",
+                  "X analala"
+                ]
+              }
+            },
+            "ontology_tags": [
+              "activity",
+              "agent",
+              "rest_state"
+            ]
+          }
+        ],
+        "entry_count": 2,
+        "spec_id": "ult_lexicon_package",
+        "spec_version": "1.0.0",
+        "ult_spec_ref": {
+          "spec_id": "ult_universal_language_tensor_spec",
+          "spec_version": "1.1.0"
+        }
+      }
+    },
+    {
+      "case_id": "array_input_normalizes_unicode_and_dedupes",
+      "input": [
+        {
+          "canonical_form": "on(X,Y)",
+          "family_id": "spatial_relation",
+          "ontology_tags": ["support_surface", "location", "object", "location"],
+          "dimensionality_inference": "spatial_relation",
+          "boundary_condition_classification": "explicit_context",
+          "languages": {
+            "AR": {
+              "lemmas": ["على", "على"],
+              "patterns": ["X على Y"]
+            },
+            "en": {
+              "lemmas": ["on"],
+              "patterns": ["X is on Y", "X sits on Y"]
+            }
+          }
+        }
+      ],
+      "expected_output": {
+        "audit": {
+          "canonicalization": "json_sort_keys",
+          "entries_sha256": "bcfdcc5fbf0279faba3eeb5b36665e44f1e0a0ef64f2066397b7bddf7c2618cf",
+          "hash_algorithm": "sha256",
+          "realization_hash_sha256": "9a8e894aa3bf2c3f81fc497e5e2aa8e2c56995893acb856f6066e3fc462f697c"
+        },
+        "entries": [
+          {
+            "boundary_condition_classification": "explicit_context",
+            "canonical_form": "on(X,Y)",
+            "dimensionality_inference": "spatial_relation",
+            "entry_id": "78cba6d8eb8bde1d",
+            "family_id": "spatial_relation",
+            "languages": {
+              "ar": {
+                "lemmas": [
+                  "على"
+                ],
+                "patterns": [
+                  "X على Y"
+                ]
+              },
+              "en": {
+                "lemmas": [
+                  "on"
+                ],
+                "patterns": [
+                  "X is on Y",
+                  "X sits on Y"
+                ]
+              }
+            },
+            "ontology_tags": [
+              "location",
+              "object",
+              "support_surface"
+            ]
+          }
+        ],
+        "entry_count": 1,
+        "spec_id": "ult_lexicon_package",
+        "spec_version": "1.0.0",
+        "ult_spec_ref": {
+          "spec_id": "ult_universal_language_tensor_spec",
+          "spec_version": "1.1.0"
+        }
+      }
+    }
+  ]
+}

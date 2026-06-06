@@ -225,8 +225,27 @@ cargo run -- serve-openai --port 8080
 
 ## Documentation Map
 
+- CLI demo log: [docs/demo/cli-demo.md](docs/demo/cli-demo.md)
 - High-level technical reference: [docs/TECHNICAL_REFERENCE.md](docs/TECHNICAL_REFERENCE.md)
 - Formal finding (decimal semantics): [docs/FORMAL_FINDING_DECIMAL_SEMANTICS.md](docs/FORMAL_FINDING_DECIMAL_SEMANTICS.md)
 - Full specifications index: [docs/specifications/README.md](docs/specifications/README.md)
 - Release and sync discipline: [docs/RELEASE_DISCIPLINE.md](docs/RELEASE_DISCIPLINE.md)
 - Change history: [CHANGELOG.md](CHANGELOG.md)
+
+## ULT Regression Proof
+
+These checks prove the ULT package is now deterministic, auditable, and CI-enforced:
+
+- Reasoning regression validates `⊔`, `⊓`, `⊢`, contradiction, and `⨁` on fixed ULT pairs.
+- Lexicon regression validates deterministic package building, canonical sorting, deduping, and audit hashes.
+- Coverage gates validate that both seed languages, EN and ES, independently cover the current predicate inventory.
+- The lexicon package is self-contained in JSON, with provenance and realization hashes exposed for auditability.
+
+## Branch Protection Checklist
+
+Require these checks before merge:
+
+- `ULT Reasoning Regression`
+- `ULT Lexicon Regression`
+- `ULT Lexicon Coverage ES Gate`
+- `ULT Lexicon Coverage EN Gate`

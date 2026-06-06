@@ -1,0 +1,490 @@
+{
+  "spec_id": "ult_universal_language_tensor_spec",
+  "spec_version": "1.1.0",
+  "description": "Combined machine-readable ULT package with schema, formal definitions, reasoning algebra, examples, and reversible generator rules.",
+  "core_tuple": [
+    "family_id",
+    "canonical_form",
+    "ontology_tags",
+    "dimensionality_inference",
+    "boundary_condition_classification"
+  ],
+  "auditability_contract": {
+    "audit_goal": "Machine-first semantics with deterministic reproducibility and integrity checks.",
+    "audit_status": "auditable",
+    "canonicalization": {
+      "method": "jq_compact_json",
+      "command": "jq -c '.<section>' docs/ult/ult.spec.json",
+      "encoding": "utf-8"
+    },
+    "integrity_hashes": {
+      "algorithm": "sha256",
+      "section_hashes": {
+        "schema": "367b1693cdc3961257b66a18c709b0d50a901e45a896633b0f1a6302a5c49c8e",
+        "mathematical_definition": "c8fc1ed835b44511d35fb641697c448eb4cea3cd966cd7092f4cada2030681a7",
+        "reasoning_algebra": "13f49ff106490b3759e158d187f347a6d50854a4fb400a42d58954407d70a87f",
+        "generator_rules": "322df0412df6e46f913b4e1f16c8cac7bc37265f258b826242980a3b97cb2465",
+        "examples": "4ade4b0c86d56f3d269aeba7475572fd7fd1477fa482cb3dbf58c9865e52e4d1"
+      }
+    },
+    "required_audit_checks": [
+      "Schema validation succeeds against the embedded schema.",
+      "Core tuple ordering is unchanged.",
+      "All section hashes match the canonicalized section payloads.",
+      "Reasoning algebra operators and laws are present and machine-readable.",
+      "Generator is declared deterministic and reversible.",
+      "Example set size remains exactly 20 unless spec_version is incremented."
+    ],
+    "versioning_policy": {
+      "breaking_change": "Increment MAJOR when core_tuple fields or schema constraints become incompatible.",
+      "non_breaking_change": "Increment MINOR when adding backward-compatible fields or examples.",
+      "patch_change": "Increment PATCH for typo fixes or clarifications that do not alter machine behavior."
+    }
+  },
+  "schema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.org/schemas/ult.schema.json",
+    "title": "ULT - Universal Language Tensor",
+    "description": "Strict JSON Schema for the core ULT semantic record.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "family_id",
+      "canonical_form",
+      "ontology_tags",
+      "dimensionality_inference",
+      "boundary_condition_classification"
+    ],
+    "properties": {
+      "family_id": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Semantic equivalence class or relation family identifier."
+      },
+      "canonical_form": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Normalized predicate skeleton or logical form."
+      },
+      "ontology_tags": {
+        "type": "array",
+        "description": "Semantic anchors used for reasoning and cross-domain alignment.",
+        "items": {
+          "type": "string",
+          "minLength": 1
+        },
+        "minItems": 1,
+        "uniqueItems": true
+      },
+      "dimensionality_inference": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Semantic domain or manifold in which the meaning is interpreted."
+      },
+      "boundary_condition_classification": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Constraint, context, or boundary classification for the meaning object."
+      }
+    }
+  },
+  "mathematical_definition": {
+    "notation": {
+      "ult": "ULT(s) = <f, c, Omega, d, b>",
+      "family_id": "f in F",
+      "canonical_form": "c in C",
+      "ontology_tags": "Omega subseteq T and finite",
+      "dimensionality_inference": "d in D",
+      "boundary_condition_classification": "b in B"
+    },
+    "sets": {
+      "F": "semantic family identifiers",
+      "C": "canonical forms",
+      "T": "ontology tag vocabulary",
+      "D": "semantic domain vocabulary",
+      "B": "boundary or context classification vocabulary"
+    },
+    "formalization": "ULT is an element of F x C x P_fin(T) x D x B with Omega finite and non-empty.",
+    "normalization_maps": {
+      "family_classifier": "F: Sigma -> F",
+      "canonicalizer": "N: Sigma -> C",
+      "tagger": "T: Sigma -> P_fin(T)",
+      "dimensionality_inferencer": "D: Sigma -> D",
+      "boundary_classifier": "B: Sigma -> B"
+    },
+    "mapping_equation": "ULT(sigma) = <F(sigma), N(sigma), T(sigma), D(sigma), B(sigma)>",
+    "equivalence": "sigma1 and sigma2 are semantically equivalent when their normalized ULT tuples are equal or differ only by a lossless surface transform.",
+    "invariance": [
+      "paraphrase that preserves meaning",
+      "translation that preserves semantics",
+      "symbolic reformatting that preserves canonical form",
+      "register changes that do not alter family, tags, or constraints"
+    ],
+    "composition": "Compatible ULT records may be composed by concatenating canonical forms and combining compatible ontology tags while preserving traceability."
+  },
+  "reasoning_algebra": {
+    "universe": {
+      "single_object": "u = <f, c, Omega, d, b>",
+      "components": {
+        "family_id": "f in F",
+        "canonical_form": "c in C",
+        "ontology_tags": "Omega subseteq T and finite",
+        "dimensionality_inference": "d in D",
+        "boundary_condition_classification": "b in B"
+      },
+      "carrier_sets": ["single_ult", "finite_set_of_ults"]
+    },
+    "lattice_requirements": {
+      "family_lattice": "(F, <=)",
+      "domain_lattice": "(D, <=)",
+      "boundary_lattice": "(B, <=)",
+      "support_ops": ["LUB", "GLB"]
+    },
+    "operators": {
+      "join": {
+        "symbol": "⊔",
+        "name": "semantic_generalization",
+        "definition": "u1 ⊔ u2 = <LUB(f1,f2), c_star, Omega1 union Omega2, LUB(d1,d2), LUB(b1,b2)>",
+        "canonical_form_rules": [
+          "if c1 == c2 then c_star = c1",
+          "if share_pattern(c1,c2) then c_star = pattern_abstraction(c1,c2)",
+          "else c_star = most_general_unifier(c1,c2)"
+        ],
+        "example": "possess(Mary,lamb) ⊔ possess(John,car) = possess(X,Y)"
+      },
+      "meet": {
+        "symbol": "⊓",
+        "name": "semantic_intersection",
+        "definition": "u1 ⊓ u2 = <GLB(f1,f2), c_star, Omega1 intersection Omega2, GLB(d1,d2), GLB(b1,b2)>",
+        "canonical_form_rules": [
+          "if c1 == c2 then c_star = c1",
+          "if specializes(c1,c2) then c_star = more_specific(c1,c2)",
+          "else c_star = bottom_canonical"
+        ],
+        "bottom_rule": "if any required component is bottom_inconsistent then result = bottom"
+      },
+      "entailment": {
+        "symbol": "⊢",
+        "name": "directional_inclusion",
+        "definition": "u1 ⊢ u2 iff family_specificity and canonical_specialization and tag_inclusion and domain_specificity and boundary_strength all hold",
+        "conditions": {
+          "family": "f1 <= f2",
+          "canonical": "specializes_or_instantiates(c1,c2)",
+          "tags": "Omega2 subseteq Omega1",
+          "domain": "d1 <= d2",
+          "boundary": "stronger_or_equal(b1,b2)"
+        }
+      },
+      "contradiction": {
+        "symbol": "⊥",
+        "name": "incompatibility_detection",
+        "predicate": "Contradict(u1,u2)",
+        "fires_when": [
+          "opposed_ontology_tags",
+          "canonical_form_mutual_exclusion",
+          "boundary_conflict",
+          "dimensionality_clash"
+        ],
+        "rule": "if Contradict(u1,u2) then (u1 ⊓ u2) = bottom"
+      },
+      "composition": {
+        "symbol": "⨁",
+        "name": "narrative_structural_chaining",
+        "binary_definition": "ui ⊕ uj = <sequence_family(fi,fj), sequence(ci,cj), Omega_i union Omega_j union {sequence, temporal_order}, LUB(di,dj), compose_boundary(bi,bj)>",
+        "fold": "U_star = fold_left(⊕, [u1, u2, ..., un])",
+        "notes": [
+          "order_sensitive",
+          "used_for_plans_narratives_proofs"
+        ]
+      }
+    },
+    "algebraic_laws": {
+      "join": ["commutative", "associative", "idempotent"],
+      "meet": ["commutative", "associative", "idempotent"],
+      "lattice_absorption": [
+        "u ⊔ (u ⊓ v) = u",
+        "u ⊓ (u ⊔ v) = u"
+      ],
+      "entailment": ["reflexive", "transitive"],
+      "contradiction": ["symmetric"],
+      "composition": ["associative", "not_commutative"]
+    },
+    "practical_capabilities": [
+      "abstraction_via_join",
+      "overlap_and_conflict_analysis_via_meet_and_contradiction",
+      "knowledge_propagation_via_entailment",
+      "plan_story_argument_construction_via_composition",
+      "consistency_validation_for_multi_step_semantics"
+    ]
+  },
+  "generator_rules": {
+    "name": "reversible_ult_to_language_generator",
+    "deterministic": true,
+    "reversible": true,
+    "input": [
+      "family_id",
+      "canonical_form",
+      "ontology_tags",
+      "dimensionality_inference",
+      "boundary_condition_classification"
+    ],
+    "steps": [
+      "Select a realization template from family_id.",
+      "Insert canonical_form into the template slot structure.",
+      "Project ontology tags into lexical choice hints.",
+      "Use dimensionality_inference to choose register and domain vocabulary.",
+      "Use boundary_condition_classification to add or suppress contextual qualifiers.",
+      "Surface the sentence in the target language or style profile."
+    ],
+    "reversibility_condition": [
+      "slot markers are preserved",
+      "canonical predicate order is preserved",
+      "stable tag-to-lexeme mappings are preserved",
+      "explicit boundary annotations are preserved when requested"
+    ],
+    "inverse_map": "G_inverse(G(u, L)) = u for supported controlled profiles.",
+    "templates": {
+      "relation": "{SUBJECT} has {OBJECT}.",
+      "event": "{AGENT} {ACTION} {PATIENT}.",
+      "conditional": "If {CONDITION}, then {OUTCOME}.",
+      "spatial": "{ENTITY_1} is {RELATION} {ENTITY_2}.",
+      "symbolic": "{CANONICAL_FORM}"
+    },
+    "language_rules": [
+      "Preserve semantic roles in order.",
+      "Translate lexical items from a controlled bilingual lexicon.",
+      "Keep named entities unchanged unless transliteration is specified.",
+      "Preserve negation, modality, and quantifiers exactly.",
+      "Preserve boundary qualifiers when requested."
+    ],
+    "reverse_reconstruction": [
+      "Parse surface syntax into predicate slots.",
+      "Recover canonical form.",
+      "Reapply the ontology tag inventory.",
+      "Infer dimensionality.",
+      "Recover boundary classification from explicit markers or defaults."
+    ]
+  },
+  "examples": [
+    {
+      "id": 1,
+      "surface": "Dave found another way into the ship.",
+      "ult": {
+        "family_id": "agent_action_location_change",
+        "canonical_form": "find_alternate_entry(Dave, ship)",
+        "ontology_tags": ["agent_motion", "problem_solving", "access_change"],
+        "dimensionality_inference": "narrative_event",
+        "boundary_condition_classification": "implicit_context"
+      }
+    },
+    {
+      "id": 2,
+      "surface": "Mary has a lamb.",
+      "ult": {
+        "family_id": "possession_relation",
+        "canonical_form": "possess(Mary, lamb)",
+        "ontology_tags": ["possession", "agent", "entity"],
+        "dimensionality_inference": "logical_relation",
+        "boundary_condition_classification": "n/a"
+      }
+    },
+    {
+      "id": 3,
+      "surface": "If pressure rises, open the valve.",
+      "ult": {
+        "family_id": "conditional_causal_relation",
+        "canonical_form": "if(rise(pressure)) then open(valve)",
+        "ontology_tags": ["condition", "causality", "mechanical_system"],
+        "dimensionality_inference": "physical_process",
+        "boundary_condition_classification": "conditional_dependency"
+      }
+    },
+    {
+      "id": 4,
+      "surface": "The meeting was moved to Tuesday.",
+      "ult": {
+        "family_id": "temporal_schedule_change",
+        "canonical_form": "reschedule(meeting, Tuesday)",
+        "ontology_tags": ["time_change", "event", "schedule"],
+        "dimensionality_inference": "temporal_relation",
+        "boundary_condition_classification": "explicit_context"
+      }
+    },
+    {
+      "id": 5,
+      "surface": "His hope was a flame.",
+      "ult": {
+        "family_id": "metaphorical_mapping",
+        "canonical_form": "map(hope, flame)",
+        "ontology_tags": ["metaphor", "emotional_state", "symbolic_transfer"],
+        "dimensionality_inference": "abstract_concept",
+        "boundary_condition_classification": "implicit_context"
+      }
+    },
+    {
+      "id": 6,
+      "surface": "The child is sleeping.",
+      "ult": {
+        "family_id": "state_transition",
+        "canonical_form": "sleep(child)",
+        "ontology_tags": ["rest_state", "agent", "activity"],
+        "dimensionality_inference": "physical_process",
+        "boundary_condition_classification": "present_state"
+      }
+    },
+    {
+      "id": 7,
+      "surface": "The river overflowed after the storm.",
+      "ult": {
+        "family_id": "event_causation",
+        "canonical_form": "overflow(river, storm)",
+        "ontology_tags": ["causal_event", "weather", "motion"],
+        "dimensionality_inference": "physical_process",
+        "boundary_condition_classification": "temporal_dependency"
+      }
+    },
+    {
+      "id": 8,
+      "surface": "The key is on the table.",
+      "ult": {
+        "family_id": "spatial_relation",
+        "canonical_form": "on(key, table)",
+        "ontology_tags": ["location", "object", "support_surface"],
+        "dimensionality_inference": "spatial_relation",
+        "boundary_condition_classification": "explicit_context"
+      }
+    },
+    {
+      "id": 9,
+      "surface": "Anna refused the request.",
+      "ult": {
+        "family_id": "refusal_act",
+        "canonical_form": "refuse(Anna, request)",
+        "ontology_tags": ["agent_refusal", "social_action", "decision"],
+        "dimensionality_inference": "social_interaction",
+        "boundary_condition_classification": "explicit_context"
+      }
+    },
+    {
+      "id": 10,
+      "surface": "The machine stopped unexpectedly.",
+      "ult": {
+        "family_id": "machine_state_change",
+        "canonical_form": "stop(machine)",
+        "ontology_tags": ["mechanical_system", "failure", "state_change"],
+        "dimensionality_inference": "physical_process",
+        "boundary_condition_classification": "implicit_context"
+      }
+    },
+    {
+      "id": 11,
+      "surface": "The teacher explained the theorem.",
+      "ult": {
+        "family_id": "communicative_act",
+        "canonical_form": "explain(teacher, theorem)",
+        "ontology_tags": ["information_transfer", "education", "agent_action"],
+        "dimensionality_inference": "discourse_event",
+        "boundary_condition_classification": "n/a"
+      }
+    },
+    {
+      "id": 12,
+      "surface": "The crowd became silent.",
+      "ult": {
+        "family_id": "collective_state_shift",
+        "canonical_form": "become_silent(crowd)",
+        "ontology_tags": ["group_state", "emotion", "social_scene"],
+        "dimensionality_inference": "narrative_event",
+        "boundary_condition_classification": "temporal_dependency"
+      }
+    },
+    {
+      "id": 13,
+      "surface": "Water freezes at zero degrees Celsius.",
+      "ult": {
+        "family_id": "physical_law",
+        "canonical_form": "freeze(water, 0C)",
+        "ontology_tags": ["phase_change", "thermodynamics", "material_process"],
+        "dimensionality_inference": "physical_process",
+        "boundary_condition_classification": "environmental_constraint"
+      }
+    },
+    {
+      "id": 14,
+      "surface": "The package arrived late.",
+      "ult": {
+        "family_id": "delivery_event",
+        "canonical_form": "arrive_late(package)",
+        "ontology_tags": ["logistics", "transport", "time"],
+        "dimensionality_inference": "event_time",
+        "boundary_condition_classification": "temporal_constraint"
+      }
+    },
+    {
+      "id": 15,
+      "surface": "The line is straight.",
+      "ult": {
+        "family_id": "geometric_property",
+        "canonical_form": "straight(line)",
+        "ontology_tags": ["geometry", "shape", "relation"],
+        "dimensionality_inference": "spatial_relation",
+        "boundary_condition_classification": "n/a"
+      }
+    },
+    {
+      "id": 16,
+      "surface": "I wonder whether she will come.",
+      "ult": {
+        "family_id": "epistemic_uncertainty",
+        "canonical_form": "wonder(speaker, come(she))",
+        "ontology_tags": ["uncertainty", "cognition", "future_event"],
+        "dimensionality_inference": "mental_state",
+        "boundary_condition_classification": "epistemic_context"
+      }
+    },
+    {
+      "id": 17,
+      "surface": "The alarm triggered the response.",
+      "ult": {
+        "family_id": "trigger_cascade",
+        "canonical_form": "trigger(alarm, response)",
+        "ontology_tags": ["causality", "alert", "system_response"],
+        "dimensionality_inference": "physical_process",
+        "boundary_condition_classification": "causal_dependency"
+      }
+    },
+    {
+      "id": 18,
+      "surface": "The old bridge still stands.",
+      "ult": {
+        "family_id": "persistence_state",
+        "canonical_form": "stand(bridge)",
+        "ontology_tags": ["structure", "durability", "time"],
+        "dimensionality_inference": "physical_state",
+        "boundary_condition_classification": "implicit_context"
+      }
+    },
+    {
+      "id": 19,
+      "surface": "The model predicts rain.",
+      "ult": {
+        "family_id": "predictive_statement",
+        "canonical_form": "predict(model, rain)",
+        "ontology_tags": ["forecast", "inference", "weather"],
+        "dimensionality_inference": "logical_relation",
+        "boundary_condition_classification": "evidential_context"
+      }
+    },
+    {
+      "id": 20,
+      "surface": "They worked together to finish the task.",
+      "ult": {
+        "family_id": "cooperative_action",
+        "canonical_form": "cooperate(they, finish(task))",
+        "ontology_tags": ["collaboration", "action", "goal"],
+        "dimensionality_inference": "social_process",
+        "boundary_condition_classification": "shared_intent"
+      }
+    }
+  ]
+}

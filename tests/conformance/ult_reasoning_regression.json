@@ -1,0 +1,180 @@
+{
+  "spec_id": "ult_reasoning_regression_corpus",
+  "spec_version": "1.0.0",
+  "cases": [
+    {
+      "case_id": "entailment_possession_instance_to_schema",
+      "u1": {
+        "family_id": "possession_relation",
+        "canonical_form": "possess(Mary, lamb)",
+        "ontology_tags": ["possession", "agent", "entity"],
+        "dimensionality_inference": "logical_relation",
+        "boundary_condition_classification": "n/a"
+      },
+      "u2": {
+        "family_id": "possession_relation",
+        "canonical_form": "possess(X, Y)",
+        "ontology_tags": ["possession"],
+        "dimensionality_inference": "logical_relation",
+        "boundary_condition_classification": "n/a"
+      },
+      "expected": {
+        "results": {
+          "join": {
+            "family_id": "possession_relation",
+            "canonical_form": "possess(X1,X2)",
+            "ontology_tags": ["agent", "entity", "possession"],
+            "dimensionality_inference": "logical_relation",
+            "boundary_condition_classification": "n/a"
+          },
+          "meet": {
+            "is_bottom": false,
+            "value": {
+              "family_id": "possession_relation",
+              "canonical_form": "possess(Mary, lamb)",
+              "ontology_tags": ["possession"],
+              "dimensionality_inference": "logical_relation",
+              "boundary_condition_classification": "n/a"
+            }
+          },
+          "entailment": {
+            "u1_entails_u2": true,
+            "u2_entails_u1": false
+          },
+          "contradiction": {
+            "value": false,
+            "reasons": []
+          },
+          "composition": {
+            "u1_then_u2": {
+              "family_id": "sequence(possession_relation->possession_relation)",
+              "canonical_form": "possess(Mary, lamb) then possess(X, Y)",
+              "ontology_tags": ["agent", "entity", "possession", "sequence", "temporal_order"],
+              "dimensionality_inference": "logical_relation",
+              "boundary_condition_classification": "n/a"
+            },
+            "u2_then_u1": {
+              "family_id": "sequence(possession_relation->possession_relation)",
+              "canonical_form": "possess(X, Y) then possess(Mary, lamb)",
+              "ontology_tags": ["agent", "entity", "possession", "sequence", "temporal_order"],
+              "dimensionality_inference": "logical_relation",
+              "boundary_condition_classification": "n/a"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "contradiction_sleep_vs_run",
+      "u1": {
+        "family_id": "state_transition",
+        "canonical_form": "sleep(child)",
+        "ontology_tags": ["rest_state", "agent", "activity"],
+        "dimensionality_inference": "physical_process",
+        "boundary_condition_classification": "present_state"
+      },
+      "u2": {
+        "family_id": "state_transition",
+        "canonical_form": "run(child)",
+        "ontology_tags": ["active_motion", "agent", "activity"],
+        "dimensionality_inference": "physical_process",
+        "boundary_condition_classification": "present_state"
+      },
+      "expected": {
+        "results": {
+          "join": {
+            "family_id": "state_transition",
+            "canonical_form": "mgu(sleep(child) || run(child))",
+            "ontology_tags": ["active_motion", "activity", "agent", "rest_state"],
+            "dimensionality_inference": "physical_process",
+            "boundary_condition_classification": "present_state"
+          },
+          "meet": {
+            "is_bottom": true,
+            "value": null
+          },
+          "entailment": {
+            "u1_entails_u2": false,
+            "u2_entails_u1": false
+          },
+          "contradiction": {
+            "value": true,
+            "reasons": ["canonical_form_mutual_exclusion", "opposed_ontology_tags:rest_state~active_motion"]
+          },
+          "composition": {
+            "u1_then_u2": {
+              "family_id": "sequence(state_transition->state_transition)",
+              "canonical_form": "sleep(child) then run(child)",
+              "ontology_tags": ["active_motion", "activity", "agent", "rest_state", "sequence", "temporal_order"],
+              "dimensionality_inference": "physical_process",
+              "boundary_condition_classification": "present_state"
+            },
+            "u2_then_u1": {
+              "family_id": "sequence(state_transition->state_transition)",
+              "canonical_form": "run(child) then sleep(child)",
+              "ontology_tags": ["active_motion", "activity", "agent", "rest_state", "sequence", "temporal_order"],
+              "dimensionality_inference": "physical_process",
+              "boundary_condition_classification": "present_state"
+            }
+          }
+        }
+      }
+    },
+    {
+      "case_id": "join_agent_action_generalization",
+      "u1": {
+        "family_id": "agent_action_location_change",
+        "canonical_form": "find_alternate_entry(Dave, ship)",
+        "ontology_tags": ["agent_motion", "problem_solving", "access_change"],
+        "dimensionality_inference": "narrative_event",
+        "boundary_condition_classification": "implicit_context"
+      },
+      "u2": {
+        "family_id": "cooperative_action",
+        "canonical_form": "cooperate(they, finish(task))",
+        "ontology_tags": ["collaboration", "action", "goal"],
+        "dimensionality_inference": "social_process",
+        "boundary_condition_classification": "shared_intent"
+      },
+      "expected": {
+        "results": {
+          "join": {
+            "family_id": "agent_action",
+            "canonical_form": "mgu(find_alternate_entry(Dave, ship) || cooperate(they, finish(task)))",
+            "ontology_tags": ["access_change", "action", "agent_motion", "collaboration", "goal", "problem_solving"],
+            "dimensionality_inference": "event_like",
+            "boundary_condition_classification": "contextualized"
+          },
+          "meet": {
+            "is_bottom": true,
+            "value": null
+          },
+          "entailment": {
+            "u1_entails_u2": false,
+            "u2_entails_u1": false
+          },
+          "contradiction": {
+            "value": false,
+            "reasons": []
+          },
+          "composition": {
+            "u1_then_u2": {
+              "family_id": "sequence(agent_action_location_change->cooperative_action)",
+              "canonical_form": "find_alternate_entry(Dave, ship) then cooperate(they, finish(task))",
+              "ontology_tags": ["access_change", "action", "agent_motion", "collaboration", "goal", "problem_solving", "sequence", "temporal_order"],
+              "dimensionality_inference": "event_like",
+              "boundary_condition_classification": "contextualized"
+            },
+            "u2_then_u1": {
+              "family_id": "sequence(cooperative_action->agent_action_location_change)",
+              "canonical_form": "cooperate(they, finish(task)) then find_alternate_entry(Dave, ship)",
+              "ontology_tags": ["access_change", "action", "agent_motion", "collaboration", "goal", "problem_solving", "sequence", "temporal_order"],
+              "dimensionality_inference": "event_like",
+              "boundary_condition_classification": "contextualized"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

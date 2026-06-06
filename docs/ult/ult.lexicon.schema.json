@@ -1,0 +1,161 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/ult.lexicon.schema.json",
+  "title": "ULT Lexicon Package",
+  "description": "Deterministic multilingual lexicon package aligned to ULT canonical predicates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_id",
+    "spec_version",
+    "ult_spec_ref",
+    "entry_count",
+    "entries",
+    "audit"
+  ],
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "const": "ult_lexicon_package"
+    },
+    "spec_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "ult_spec_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spec_id",
+        "spec_version"
+      ],
+      "properties": {
+        "spec_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spec_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+    "entry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/lexiconEntry"
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonicalization",
+        "hash_algorithm",
+        "entries_sha256"
+      ],
+      "properties": {
+        "canonicalization": {
+          "type": "string",
+          "const": "json_sort_keys"
+        },
+        "hash_algorithm": {
+          "type": "string",
+          "const": "sha256"
+        },
+        "entries_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "lexiconEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry_id",
+        "canonical_form",
+        "family_id",
+        "ontology_tags",
+        "dimensionality_inference",
+        "boundary_condition_classification",
+        "languages"
+      ],
+      "properties": {
+        "entry_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "canonical_form": {
+          "type": "string",
+          "minLength": 1
+        },
+        "family_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ontology_tags": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "dimensionality_inference": {
+          "type": "string",
+          "minLength": 1
+        },
+        "boundary_condition_classification": {
+          "type": "string",
+          "minLength": 1
+        },
+        "languages": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/languageRealization"
+          }
+        }
+      }
+    },
+    "languageRealization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "lemmas",
+        "patterns"
+      ],
+      "properties": {
+        "lemmas": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "patterns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

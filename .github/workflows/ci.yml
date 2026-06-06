@@ -8,6 +8,7 @@ on:
 
 jobs:
   rust-test:
+    name: Rust Test
     runs-on: ubuntu-latest
 
     steps:
@@ -30,3 +31,75 @@ jobs:
 
       - name: Conversation Benchmark
         run: bash scripts/conversation-benchmark.sh
+
+  ult-reasoning-regression:
+    name: ULT Reasoning Regression
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run ULT Reasoning Regression
+        run: python3 scripts/run-ult-reasoning-regression.py
+
+  ult-lexicon-regression:
+    name: ULT Lexicon Regression
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run ULT Lexicon Regression
+        run: python3 scripts/run-ult-lexicon-regression.py
+
+  ult-lexicon-coverage-es:
+    name: ULT Lexicon Coverage ES Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify ES Coverage and Hash Stability
+        run: >-
+          python3 scripts/eval-ult-lexicon-coverage.py
+          --lexicon docs/ult/ult-lexicon.spec.json
+          --target-language es
+          --expected-realization-hash f5b8c12f565bec57e7a98d65777906f0ac4dc506808ff4682a2b97f4ae7133e8
+
+  ult-lexicon-coverage-en:
+    name: ULT Lexicon Coverage EN Gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify EN Coverage and Hash Stability
+        run: >-
+          python3 scripts/eval-ult-lexicon-coverage.py
+          --lexicon docs/ult/ult-lexicon.spec.json
+          --target-language en
+          --expected-realization-hash f5b8c12f565bec57e7a98d65777906f0ac4dc506808ff4682a2b97f4ae7133e8

@@ -1,0 +1,1438 @@
+{
+  "deutsch": {
+    "deterministic": true,
+    "object": "ugc.quantum_analog.deutsch_probe",
+    "phase_analog_mapping": {
+      "entanglement": "edge-resonance-preserving relation",
+      "hadamard_analog": "circular_mean(theta, theta + pi/2)",
+      "interference": "multi-path constructive/destructive phase composition",
+      "measurement": "tri-state crystallization boundary",
+      "phase_gate": "wrap_pi(theta + phi)",
+      "superposition": "phase angles in principal interval [-pi, pi]"
+    },
+    "results": [
+      {
+        "case_id": "f_zero",
+        "expected": "constant",
+        "match": true,
+        "measurement_first_qubit": {
+          "0": 1.0,
+          "1": 0.0
+        },
+        "predicted": "constant",
+        "state_after_oracle": [
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.5
+            },
+            "basis": "00",
+            "magnitude": 0.5,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.5
+            },
+            "basis": "01",
+            "magnitude": 0.5,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.5
+            },
+            "basis": "10",
+            "magnitude": 0.5,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.5
+            },
+            "basis": "11",
+            "magnitude": 0.5,
+            "phase_radians": 3.14159265359
+          }
+        ],
+        "state_final": [
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.707106781187
+            },
+            "basis": "00",
+            "magnitude": 0.707106781187,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.707106781187
+            },
+            "basis": "01",
+            "magnitude": 0.707106781187,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.0
+            },
+            "basis": "10",
+            "magnitude": 0.0,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.0
+            },
+            "basis": "11",
+            "magnitude": 0.0,
+            "phase_radians": 0.0
+          }
+        ]
+      },
+      {
+        "case_id": "f_one",
+        "expected": "constant",
+        "match": true,
+        "measurement_first_qubit": {
+          "0": 1.0,
+          "1": 0.0
+        },
+        "predicted": "constant",
+        "state_after_oracle": [
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.5
+            },
+            "basis": "00",
+            "magnitude": 0.5,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.5
+            },
+            "basis": "01",
+            "magnitude": 0.5,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.5
+            },
+            "basis": "10",
+            "magnitude": 0.5,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.5
+            },
+            "basis": "11",
+            "magnitude": 0.5,
+            "phase_radians": 0.0
+          }
+        ],
+        "state_final": [
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.707106781187
+            },
+            "basis": "00",
+            "magnitude": 0.707106781187,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.707106781187
+            },
+            "basis": "01",
+            "magnitude": 0.707106781187,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.0
+            },
+            "basis": "10",
+            "magnitude": 0.0,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.0
+            },
+            "basis": "11",
+            "magnitude": 0.0,
+            "phase_radians": 0.0
+          }
+        ]
+      },
+      {
+        "case_id": "f_x",
+        "expected": "balanced",
+        "match": true,
+        "measurement_first_qubit": {
+          "0": 0.0,
+          "1": 1.0
+        },
+        "predicted": "balanced",
+        "state_after_oracle": [
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.5
+            },
+            "basis": "00",
+            "magnitude": 0.5,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.5
+            },
+            "basis": "01",
+            "magnitude": 0.5,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.5
+            },
+            "basis": "10",
+            "magnitude": 0.5,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.5
+            },
+            "basis": "11",
+            "magnitude": 0.5,
+            "phase_radians": 0.0
+          }
+        ],
+        "state_final": [
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.0
+            },
+            "basis": "00",
+            "magnitude": 0.0,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.0
+            },
+            "basis": "01",
+            "magnitude": 0.0,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.707106781187
+            },
+            "basis": "10",
+            "magnitude": 0.707106781187,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.707106781187
+            },
+            "basis": "11",
+            "magnitude": 0.707106781187,
+            "phase_radians": 3.14159265359
+          }
+        ]
+      },
+      {
+        "case_id": "f_not_x",
+        "expected": "balanced",
+        "match": true,
+        "measurement_first_qubit": {
+          "0": 0.0,
+          "1": 1.0
+        },
+        "predicted": "balanced",
+        "state_after_oracle": [
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.5
+            },
+            "basis": "00",
+            "magnitude": 0.5,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.5
+            },
+            "basis": "01",
+            "magnitude": 0.5,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.5
+            },
+            "basis": "10",
+            "magnitude": 0.5,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.5
+            },
+            "basis": "11",
+            "magnitude": 0.5,
+            "phase_radians": 3.14159265359
+          }
+        ],
+        "state_final": [
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.0
+            },
+            "basis": "00",
+            "magnitude": 0.0,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.0
+            },
+            "basis": "01",
+            "magnitude": 0.0,
+            "phase_radians": 0.0
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": -0.707106781187
+            },
+            "basis": "10",
+            "magnitude": 0.707106781187,
+            "phase_radians": 3.14159265359
+          },
+          {
+            "amplitude": {
+              "im": 0.0,
+              "re": 0.707106781187
+            },
+            "basis": "11",
+            "magnitude": 0.707106781187,
+            "phase_radians": 0.0
+          }
+        ]
+      }
+    ],
+    "schema_version": "ugc_deutsch_probe_v1",
+    "summary": {
+      "cases": 4,
+      "failed": 0,
+      "passed": 4
+    }
+  },
+  "deutsch_jozsa": {
+    "batches": [
+      {
+        "aggregate_metrics": {
+          "avg_runtime_ms": 0.006358,
+          "estimated_peak_memory_bytes": 384,
+          "max_torsion_radians": 3.14159265359,
+          "total_phase_operations": 800,
+          "total_runtime_ms": 0.050861
+        },
+        "n_bits": 3,
+        "oracle_count": 8,
+        "results": [
+          {
+            "expected": "constant",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 0.0,
+              "p_zero_state": 1.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 384,
+              "max_torsion_radians": 0.0,
+              "phase_operations": 96,
+              "runtime_ms": 0.013221,
+              "state_dimension": 8
+            },
+            "oracle_id": "n3_constant_0",
+            "predicted": "constant"
+          },
+          {
+            "expected": "constant",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 0.0,
+              "p_zero_state": 1.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 384,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 104,
+              "runtime_ms": 0.007719,
+              "state_dimension": 8
+            },
+            "oracle_id": "n3_constant_1",
+            "predicted": "constant"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 384,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 100,
+              "runtime_ms": 0.006892,
+              "state_dimension": 8
+            },
+            "oracle_id": "n3_balanced_a001_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 384,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 100,
+              "runtime_ms": 0.004957,
+              "state_dimension": 8
+            },
+            "oracle_id": "n3_balanced_a010_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 384,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 100,
+              "runtime_ms": 0.004742,
+              "state_dimension": 8
+            },
+            "oracle_id": "n3_balanced_a011_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 384,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 100,
+              "runtime_ms": 0.004658,
+              "state_dimension": 8
+            },
+            "oracle_id": "n3_balanced_a100_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 384,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 100,
+              "runtime_ms": 0.004365,
+              "state_dimension": 8
+            },
+            "oracle_id": "n3_balanced_a101_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 384,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 100,
+              "runtime_ms": 0.004307,
+              "state_dimension": 8
+            },
+            "oracle_id": "n3_balanced_a110_b0",
+            "predicted": "balanced"
+          }
+        ],
+        "summary": {
+          "deterministic_output_sha256": "645d467046e77b939dd7105e4125d68c8a393b88dba238d510c8e7977ea9e68c",
+          "failed": 0,
+          "passed": 8,
+          "stability_hash_stable": true
+        }
+      },
+      {
+        "aggregate_metrics": {
+          "avg_runtime_ms": 0.008991,
+          "estimated_peak_memory_bytes": 768,
+          "max_torsion_radians": 3.14159265359,
+          "total_phase_operations": 4224,
+          "total_runtime_ms": 0.143852
+        },
+        "n_bits": 4,
+        "oracle_count": 16,
+        "results": [
+          {
+            "expected": "constant",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 0.0,
+              "p_zero_state": 1.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 0.0,
+              "phase_operations": 256,
+              "runtime_ms": 0.009305,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_constant_0",
+            "predicted": "constant"
+          },
+          {
+            "expected": "constant",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 0.0,
+              "p_zero_state": 1.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 272,
+              "runtime_ms": 0.01025,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_constant_1",
+            "predicted": "constant"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.009613,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a0001_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008853,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a0010_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008841,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a0011_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.009211,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a0100_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.00863,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a0101_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008693,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a0110_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.009231,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a0111_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008652,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a1000_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008893,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a1001_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008797,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a1010_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008898,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a1011_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008713,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a1100_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.0087,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a1101_b0",
+            "predicted": "balanced"
+          },
+          {
+            "expected": "balanced",
+            "match": true,
+            "measurement": {
+              "p_nonzero_state": 1.0,
+              "p_zero_state": 0.0
+            },
+            "metrics": {
+              "estimated_peak_memory_bytes": 768,
+              "max_torsion_radians": 3.14159265359,
+              "phase_operations": 264,
+              "runtime_ms": 0.008572,
+              "state_dimension": 16
+            },
+            "oracle_id": "n4_balanced_a1110_b0",
+            "predicted": "balanced"
+          }
+        ],
+        "summary": {
+          "deterministic_output_sha256": "2087936130e7caa44e786ad7cd766476570bff8d269515b342371e76f9137672",
+          "failed": 0,
+          "passed": 16,
+          "stability_hash_stable": true
+        }
+      }
+    ],
+    "deterministic": true,
+    "n_values": [
+      3,
+      4
+    ],
+    "object": "ugc.quantum_analog.deutsch_jozsa_probe",
+    "schema_version": "ugc_deutsch_jozsa_probe_v1"
+  },
+  "generated_utc": "2026-06-06T17:06:18Z",
+  "grover": {
+    "optimal": {
+      "deterministic": true,
+      "deterministic_output_sha256": "dc5aed6c5d7920c4bc2c1c70fc5afccb8ecbd2f085004e2d3cd01f232a9e3267",
+      "hash_stable": true,
+      "notes": {
+        "model": "two-amplitude closed-form Grover evolution for single-marked-item search",
+        "scope": "software quantum-analog probe on classical hardware",
+        "trace_semantics": "each trace row records marked/unmarked amplitudes after iteration k"
+      },
+      "object": "ugc.quantum_analog.grover_probe",
+      "schema_version": "ugc_grover_probe_v1",
+      "trials": [
+        {
+          "baseline": {
+            "classical_avg_queries": 524288,
+            "classical_worst_queries": 1048576,
+            "grover_query_ratio_vs_avg": 0.00153351,
+            "grover_query_ratio_vs_worst": 0.00076675
+          },
+          "grover_iterations": 804,
+          "iteration_policy": "optimal",
+          "marked_item": 263723,
+          "metrics": {
+            "max_torsion_radians": 3.14159265359,
+            "peak_memory_bytes_full_state_equivalent": 16777216,
+            "peak_memory_bytes_reduced_model": 16,
+            "phase_operations_equivalent": 843055908,
+            "runtime_ms": 0.114452
+          },
+          "n_bits": 20,
+          "pi_over_4_sqrt_n_reference": 804,
+          "result": {
+            "correct": true,
+            "predicted_marked_item": 263723,
+            "success_probability": 0.999999756965
+          },
+          "search_space": 1048576,
+          "sqrt_n_reference": 1024,
+          "trace": [
+            {
+              "iteration": 1,
+              "marked_amplitude": 0.002929683775,
+              "marked_probability": 8.583047e-06,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000976558775,
+              "unmarked_probability_each": 9.53667040463e-07
+            },
+            {
+              "iteration": 128,
+              "marked_amplitude": 0.248350083311,
+              "marked_probability": 0.061677763881,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000945967584,
+              "unmarked_probability_each": 8.948546705e-07
+            },
+            {
+              "iteration": 256,
+              "marked_amplitude": 0.480282393924,
+              "marked_probability": 0.230671177913,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000856556967,
+              "unmarked_probability_each": 7.33689838197e-07
+            },
+            {
+              "iteration": 384,
+              "marked_amplitude": 0.682353062048,
+              "marked_probability": 0.465605701287,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.00071388977,
+              "unmarked_probability_each": 5.09638603546e-07
+            },
+            {
+              "iteration": 512,
+              "marked_amplitude": 0.841998308282,
+              "marked_probability": 0.70896115115,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.00052683635,
+              "unmarked_probability_each": 2.77556539924e-07
+            },
+            {
+              "iteration": 640,
+              "marked_amplitude": 0.949292161304,
+              "marked_probability": 0.901155607513,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000307026788,
+              "unmarked_probability_each": 9.4265448335e-08
+            },
+            {
+              "iteration": 768,
+              "marked_amplitude": 0.997563606893,
+              "marked_probability": 0.995133149796,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 6.812778e-05,
+              "unmarked_probability_each": 4.641394467e-09
+            },
+            {
+              "iteration": 804,
+              "marked_amplitude": 0.999999878483,
+              "marked_probability": 0.999999756965,
+              "max_torsion_radians": 3.14159265359,
+              "unmarked_amplitude": -4.81431e-07,
+              "unmarked_probability_each": 2.31776e-13
+            }
+          ]
+        },
+        {
+          "baseline": {
+            "classical_avg_queries": 524288,
+            "classical_worst_queries": 1048576,
+            "grover_query_ratio_vs_avg": 0.00153351,
+            "grover_query_ratio_vs_worst": 0.00076675
+          },
+          "grover_iterations": 804,
+          "iteration_policy": "optimal",
+          "marked_item": 203341,
+          "metrics": {
+            "max_torsion_radians": 3.14159265359,
+            "peak_memory_bytes_full_state_equivalent": 16777216,
+            "peak_memory_bytes_reduced_model": 16,
+            "phase_operations_equivalent": 843055908,
+            "runtime_ms": 0.106596
+          },
+          "n_bits": 20,
+          "pi_over_4_sqrt_n_reference": 804,
+          "result": {
+            "correct": true,
+            "predicted_marked_item": 203341,
+            "success_probability": 0.999999756965
+          },
+          "search_space": 1048576,
+          "sqrt_n_reference": 1024,
+          "trace": [
+            {
+              "iteration": 1,
+              "marked_amplitude": 0.002929683775,
+              "marked_probability": 8.583047e-06,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000976558775,
+              "unmarked_probability_each": 9.53667040463e-07
+            },
+            {
+              "iteration": 128,
+              "marked_amplitude": 0.248350083311,
+              "marked_probability": 0.061677763881,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000945967584,
+              "unmarked_probability_each": 8.948546705e-07
+            },
+            {
+              "iteration": 256,
+              "marked_amplitude": 0.480282393924,
+              "marked_probability": 0.230671177913,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000856556967,
+              "unmarked_probability_each": 7.33689838197e-07
+            },
+            {
+              "iteration": 384,
+              "marked_amplitude": 0.682353062048,
+              "marked_probability": 0.465605701287,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.00071388977,
+              "unmarked_probability_each": 5.09638603546e-07
+            },
+            {
+              "iteration": 512,
+              "marked_amplitude": 0.841998308282,
+              "marked_probability": 0.70896115115,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.00052683635,
+              "unmarked_probability_each": 2.77556539924e-07
+            },
+            {
+              "iteration": 640,
+              "marked_amplitude": 0.949292161304,
+              "marked_probability": 0.901155607513,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000307026788,
+              "unmarked_probability_each": 9.4265448335e-08
+            },
+            {
+              "iteration": 768,
+              "marked_amplitude": 0.997563606893,
+              "marked_probability": 0.995133149796,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 6.812778e-05,
+              "unmarked_probability_each": 4.641394467e-09
+            },
+            {
+              "iteration": 804,
+              "marked_amplitude": 0.999999878483,
+              "marked_probability": 0.999999756965,
+              "max_torsion_radians": 3.14159265359,
+              "unmarked_amplitude": -4.81431e-07,
+              "unmarked_probability_each": 2.31776e-13
+            }
+          ]
+        },
+        {
+          "baseline": {
+            "classical_avg_queries": 524288,
+            "classical_worst_queries": 1048576,
+            "grover_query_ratio_vs_avg": 0.00153351,
+            "grover_query_ratio_vs_worst": 0.00076675
+          },
+          "grover_iterations": 804,
+          "iteration_policy": "optimal",
+          "marked_item": 935576,
+          "metrics": {
+            "max_torsion_radians": 3.14159265359,
+            "peak_memory_bytes_full_state_equivalent": 16777216,
+            "peak_memory_bytes_reduced_model": 16,
+            "phase_operations_equivalent": 843055908,
+            "runtime_ms": 0.099471
+          },
+          "n_bits": 20,
+          "pi_over_4_sqrt_n_reference": 804,
+          "result": {
+            "correct": true,
+            "predicted_marked_item": 935576,
+            "success_probability": 0.999999756965
+          },
+          "search_space": 1048576,
+          "sqrt_n_reference": 1024,
+          "trace": [
+            {
+              "iteration": 1,
+              "marked_amplitude": 0.002929683775,
+              "marked_probability": 8.583047e-06,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000976558775,
+              "unmarked_probability_each": 9.53667040463e-07
+            },
+            {
+              "iteration": 128,
+              "marked_amplitude": 0.248350083311,
+              "marked_probability": 0.061677763881,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000945967584,
+              "unmarked_probability_each": 8.948546705e-07
+            },
+            {
+              "iteration": 256,
+              "marked_amplitude": 0.480282393924,
+              "marked_probability": 0.230671177913,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000856556967,
+              "unmarked_probability_each": 7.33689838197e-07
+            },
+            {
+              "iteration": 384,
+              "marked_amplitude": 0.682353062048,
+              "marked_probability": 0.465605701287,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.00071388977,
+              "unmarked_probability_each": 5.09638603546e-07
+            },
+            {
+              "iteration": 512,
+              "marked_amplitude": 0.841998308282,
+              "marked_probability": 0.70896115115,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.00052683635,
+              "unmarked_probability_each": 2.77556539924e-07
+            },
+            {
+              "iteration": 640,
+              "marked_amplitude": 0.949292161304,
+              "marked_probability": 0.901155607513,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000307026788,
+              "unmarked_probability_each": 9.4265448335e-08
+            },
+            {
+              "iteration": 768,
+              "marked_amplitude": 0.997563606893,
+              "marked_probability": 0.995133149796,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 6.812778e-05,
+              "unmarked_probability_each": 4.641394467e-09
+            },
+            {
+              "iteration": 804,
+              "marked_amplitude": 0.999999878483,
+              "marked_probability": 0.999999756965,
+              "max_torsion_radians": 3.14159265359,
+              "unmarked_amplitude": -4.81431e-07,
+              "unmarked_probability_each": 2.31776e-13
+            }
+          ]
+        }
+      ]
+    },
+    "sqrt_reference": {
+      "deterministic": true,
+      "deterministic_output_sha256": "f3aaba0a8da235fa9d38d7802bf7f8eae2e7cb7e316c4e1e22cb7e29719114db",
+      "hash_stable": true,
+      "notes": {
+        "model": "two-amplitude closed-form Grover evolution for single-marked-item search",
+        "scope": "software quantum-analog probe on classical hardware",
+        "trace_semantics": "each trace row records marked/unmarked amplitudes after iteration k"
+      },
+      "object": "ugc.quantum_analog.grover_probe",
+      "schema_version": "ugc_grover_probe_v1",
+      "trials": [
+        {
+          "baseline": {
+            "classical_avg_queries": 524288,
+            "classical_worst_queries": 1048576,
+            "grover_query_ratio_vs_avg": 0.00195312,
+            "grover_query_ratio_vs_worst": 0.00097656
+          },
+          "grover_iterations": 1024,
+          "iteration_policy": "sqrt",
+          "marked_item": 263723,
+          "metrics": {
+            "max_torsion_radians": 0.0,
+            "peak_memory_bytes_full_state_equivalent": 16777216,
+            "peak_memory_bytes_reduced_model": 16,
+            "phase_operations_equivalent": 1073742848,
+            "runtime_ms": 0.13094
+          },
+          "n_bits": 20,
+          "pi_over_4_sqrt_n_reference": 804,
+          "result": {
+            "correct": true,
+            "predicted_marked_item": 263723,
+            "success_probability": 0.826081881498
+          },
+          "search_space": 1048576,
+          "sqrt_n_reference": 1024,
+          "trace": [
+            {
+              "iteration": 1,
+              "marked_amplitude": 0.002929683775,
+              "marked_probability": 8.583047e-06,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": 0.000976558775,
+              "unmarked_probability_each": 9.53667040463e-07
+            },
+            {
+              "iteration": 1024,
+              "marked_amplitude": 0.908890467272,
+              "marked_probability": 0.826081881498,
+              "max_torsion_radians": 0.0,
+              "unmarked_amplitude": -0.000407260851,
+              "unmarked_probability_each": 1.65861400951e-07
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "invocation": "python3 scripts/run-ugc-quantum-suite.py --pretty",
+  "object": "ugc.quantum_analog.suite_report",
+  "outputs": {
+    "json_report_path": "docs/demo/quantum-suite-report.json",
+    "markdown_report_path": "docs/demo/quantum-suite-report.md"
+  },
+  "schema_version": "ugc_quantum_suite_report_v1",
+  "simon": {
+    "deterministic": true,
+    "deterministic_output_sha256": "02816f64b3d7ae2c7e7b5ed66d01fe35589ba5ff12e482f70a56f02b12a7c066",
+    "hash_stable": true,
+    "notes": {
+      "measurement_rule": "each measured y satisfies y\u00b7s = 0 mod 2",
+      "problem": "hidden period detection",
+      "scope": "software quantum-analog probe on classical hardware"
+    },
+    "object": "ugc.quantum_analog.simon_probe",
+    "schema_version": "ugc_simon_probe_v1",
+    "summary": {
+      "failed": 0,
+      "n_bits": 8,
+      "passed": 3,
+      "trials": 3
+    },
+    "trials": [
+      {
+        "classical_worst_samples": 256,
+        "equations": [
+          "00000010",
+          "00000101",
+          "00001001",
+          "00010000",
+          "00100001",
+          "01000000",
+          "10000001"
+        ],
+        "match": true,
+        "measurements_used": 7,
+        "metrics": {
+          "max_torsion_radians": 3.14159265359,
+          "peak_memory_bytes": 120,
+          "phase_operations_equivalent": 1792,
+          "runtime_ms": 0.047644
+        },
+        "n_bits": 8,
+        "query_ratio_vs_classical_worst": 0.02734375,
+        "recovered_period": "10101101",
+        "secret_period": "10101101",
+        "trace": [
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 1,
+            "measurement_y": "00000010",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 1
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 2,
+            "measurement_y": "00000101",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 2
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 3,
+            "measurement_y": "00001001",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 3
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 4,
+            "measurement_y": "00010000",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 4
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 5,
+            "measurement_y": "00100001",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 5
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 6,
+            "measurement_y": "01000000",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 6
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 7,
+            "measurement_y": "10000001",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 7
+          }
+        ]
+      },
+      {
+        "classical_worst_samples": 256,
+        "equations": [
+          "00000011",
+          "00000100",
+          "00001001",
+          "00010001",
+          "00100000",
+          "01000001",
+          "10000000"
+        ],
+        "match": true,
+        "measurements_used": 7,
+        "metrics": {
+          "max_torsion_radians": 3.14159265359,
+          "peak_memory_bytes": 120,
+          "phase_operations_equivalent": 1792,
+          "runtime_ms": 0.024907
+        },
+        "n_bits": 8,
+        "query_ratio_vs_classical_worst": 0.02734375,
+        "recovered_period": "01011011",
+        "secret_period": "01011011",
+        "trace": [
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 1,
+            "measurement_y": "00000011",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 1
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 2,
+            "measurement_y": "00000100",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 2
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 3,
+            "measurement_y": "00001001",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 3
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 4,
+            "measurement_y": "00010001",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 4
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 5,
+            "measurement_y": "00100000",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 5
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 6,
+            "measurement_y": "01000001",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 6
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 7,
+            "measurement_y": "10000000",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 7
+          }
+        ]
+      },
+      {
+        "classical_worst_samples": 256,
+        "equations": [
+          "00000001",
+          "00000100",
+          "00001000",
+          "00010000",
+          "00100010",
+          "01000010",
+          "10000010"
+        ],
+        "match": true,
+        "measurements_used": 7,
+        "metrics": {
+          "max_torsion_radians": 3.14159265359,
+          "peak_memory_bytes": 120,
+          "phase_operations_equivalent": 1792,
+          "runtime_ms": 0.055787
+        },
+        "n_bits": 8,
+        "query_ratio_vs_classical_worst": 0.02734375,
+        "recovered_period": "11100010",
+        "secret_period": "11100010",
+        "trace": [
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 1,
+            "measurement_y": "00000001",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 1
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 2,
+            "measurement_y": "00000100",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 2
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 3,
+            "measurement_y": "00001000",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 3
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 4,
+            "measurement_y": "00010000",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 4
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 5,
+            "measurement_y": "00100010",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 5
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 6,
+            "measurement_y": "01000010",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 6
+          },
+          {
+            "accepted_independent_equation": true,
+            "independent_equation_count": 7,
+            "measurement_y": "10000010",
+            "orthogonality_check": "y\u00b7s mod2 = 0",
+            "round": 7
+          }
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "all_pass": true,
+    "deterministic_hash_stable": true,
+    "total_failed": 0,
+    "total_passed": 34,
+    "total_probe_groups": 4,
+    "total_trials": 34
+  }
+}
