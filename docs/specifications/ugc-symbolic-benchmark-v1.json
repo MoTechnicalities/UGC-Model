@@ -1,0 +1,344 @@
+{
+  "spec_id": "ugc_symbolic_benchmark_v1",
+  "spec_version": "1.0.0",
+  "description": "Minimal external scoring spec for symbolic UGC math+ontology behavior.",
+  "target_payload_path": "symbolic_orchestration",
+  "required_payload_fields": [
+    "family_id",
+    "canonical_form",
+    "ontology_tags",
+    "benchmark_output_block"
+  ],
+  "benchmark_output_block_contract": {
+    "line_order": [
+      "dimensionality_inference",
+      "boundary_condition_classification",
+      "geometry_solution_options"
+    ],
+    "line_separator": "\\n",
+    "format": "dimensionality_inference=<value>\\nboundary_condition_classification=<value>\\ngeometry_solution_options=<value>"
+  },
+  "cases": [
+    {
+      "case_id": "helmholtz_basic_unicode",
+      "input": "\\nabla^2 \\phi = k^2 \\phi",
+      "required": {
+        "family_id": "helmholtz_constraint",
+        "canonical_form": "nabla^2(phi) = k^2 phi",
+        "ontology_tags_all": [
+          "scalar_field",
+          "helmholtz_family"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=unspecified\\nboundary_condition_classification=boundary_data_missing_or_partial\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "helmholtz_1d_derivative",
+      "input": "\\frac{d^2 \\phi}{dx^2} = k^2 \\phi",
+      "required": {
+        "family_id": "helmholtz_constraint",
+        "canonical_form": "d^2phi/dx^2 = k^2 phi",
+        "ontology_tags_all": [
+          "scalar_field",
+          "helmholtz_family"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=1d_line\\nboundary_condition_classification=boundary_data_missing_or_partial\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "helmholtz_1d_dirichlet",
+      "input": "\\frac{d^2 \\phi}{dx^2} + k^2 \\phi = 0, \\phi(0)=0, \\phi(L)=0",
+      "required": {
+        "family_id": "helmholtz_constraint",
+        "canonical_form": "d^2phi/dx^2 + k^2 phi = 0",
+        "ontology_tags_all": [
+          "scalar_field",
+          "helmholtz_family"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=1d_line\\nboundary_condition_classification=discrete_eigenmode_spectrum\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "helmholtz_spatial_vector",
+      "input": "\\nabla^2 \\phi(\\vec{r}) + k^2 \\phi(\\vec{r}) = 0",
+      "required": {
+        "family_id": "helmholtz_constraint",
+        "canonical_form": "nabla^2(phi(r)) + k^2 phi(r) = 0",
+        "ontology_tags_all": [
+          "scalar_field",
+          "helmholtz_family"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=spatial_field\\nboundary_condition_classification=boundary_data_missing_or_partial\\ngeometry_solution_options=cartesian_separable,cylindrical_bessel,spherical_harmonics$"
+      }
+    },
+    {
+      "case_id": "resonance_chamber_fraction",
+      "input": "\\omega_n = \\frac{n\\pi c}{L}",
+      "required": {
+        "family_id": "resonance_eigenmode",
+        "canonical_form": "omega_n = n*pi*c/L",
+        "ontology_tags_all": [
+          "resonance_chamber",
+          "discrete_spectrum"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=n/a\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "dipole_flux_torsion_density",
+      "input": "\\nabla \\cdot \\vec{F} = \\rho_{\\text{torsion}}",
+      "required": {
+        "family_id": "dipole_flux_balance",
+        "canonical_form": "nabla · F = rho_torsion",
+        "ontology_tags_all": [
+          "flux_field",
+          "torsion_density_source"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=flux_field\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "logistic_unit_time_fraction",
+      "input": "\\frac{dU}{dt} = \\alpha\\,U(1-U)",
+      "required": {
+        "family_id": "unit_time_logistic_coupling",
+        "canonical_form": "dU/dt = alpha*U*(1-U)",
+        "ontology_tags_all": [
+          "logistic_growth",
+          "bounded_growth"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=n/a\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "csif_crystal_field_helmholtz",
+      "input": "\\nabla^2 \\phi_{\\text{crystal}}(\\vec{r}) + k^2 \\phi_{\\text{crystal}}(\\vec{r}) = 0",
+      "required": {
+        "family_id": "helmholtz_constraint",
+        "canonical_form": "nabla^2(phi_crystal(r)) + k^2 phi_crystal(r) = 0",
+        "ontology_tags_all": [
+          "crystal_field",
+          "helmholtz_family"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=spatial_field\\nboundary_condition_classification=boundary_data_missing_or_partial\\ngeometry_solution_options=cartesian_separable,cylindrical_bessel,spherical_harmonics$"
+      }
+    },
+    {
+      "case_id": "coupled_crystal_flux_system",
+      "input": "\\nabla^2 \\phi(\\vec{r}) = k^2 \\phi(\\vec{r}), \\nabla \\cdot \\vec{F} = \\rho_{\\text{torsion}}, \\vec{F} = -\\nabla \\phi",
+      "required": {
+        "family_id": "coupled_crystal_flux_system",
+        "canonical_form": "nabla^2(phi(r)) = k^2 phi(r), nabla · F = rho_torsion, F = -nabla(phi)",
+        "ontology_tags_all": [
+          "coupled_field_flux_system",
+          "potential_generated_flux",
+          "torsion_density_source"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=coupled_field_flux\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "damped_unit_time_coupling",
+      "input": "\\frac{dU}{dt} = \\alpha\\,U(1-U) - \\gamma U",
+      "required": {
+        "family_id": "damped_unit_time_coupling",
+        "canonical_form": "dU/dt = alpha*U*(1-U) - gamma*U",
+        "ontology_tags_all": [
+          "logistic_like",
+          "bounded_growth",
+          "damped_dynamics"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=n/a\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "time_harmonic_crystal_field",
+      "input": "\\nabla^2 \\phi(\\vec{r},t) + k^2 \\phi(\\vec{r},t) = 0, \\phi(\\vec{r},t) = \\Re\\{\\Phi(\\vec{r}) e^{-i\\omega t}\\}",
+      "required": {
+        "family_id": "time_harmonic_crystal_field",
+        "canonical_form": "nabla^2(phi(r,t)) + k^2 phi(r,t) = 0, phi(r,t)=Re{Phi(r)e^{-iomega t}}",
+        "ontology_tags_all": [
+          "time_harmonic_separation",
+          "resonance_mode_linkage",
+          "crystal_field"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=spatial_temporal_field\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "trig_mode_shape_probe",
+      "input": "\\sin\\left(\\frac{n\\pi x}{L}\\right)",
+      "required": {
+        "family_id": "trig_mode_shape_probe",
+        "canonical_form": "sin(n*pi*x/L)",
+        "ontology_tags_all": [
+          "mode_shape",
+          "eigenmode_profile"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=mode_profile\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "trig_phase_signal_probe",
+      "input": "\\cos(\\theta),\\quad \\theta = \\omega t",
+      "required": {
+        "family_id": "trig_phase_signal_probe",
+        "canonical_form": "cos(theta), theta=omega*t",
+        "ontology_tags_all": [
+          "phase_variable",
+          "angular_frequency",
+          "time_harmonic_signal"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=phase_signal\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "geometric_transport_operator",
+      "input": "\\frac{D\\phi}{Dt} = \\partial_t \\phi + \\vec{v}\\cdot\\nabla\\phi",
+      "required": {
+        "family_id": "geometric_transport_operator",
+        "canonical_form": "Dphi/Dt = partial_t phi + v·nabla(phi)",
+        "ontology_tags_all": [
+          "material_derivative",
+          "transport_field",
+          "flow_velocity"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=transport_field\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "curvature_laplacian",
+      "input": "\\Delta_g \\phi = k^2 \\phi",
+      "required": {
+        "family_id": "curvature_laplacian",
+        "canonical_form": "Delta_g(phi) = k^2 phi",
+        "ontology_tags_all": [
+          "metric_laplacian",
+          "curved_manifold",
+          "geometric_operator"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=curved_manifold\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "energy_functional",
+      "input": "E[\\phi] = \\int (|\\nabla\\phi|^2 + k^2 \\phi^2) dV",
+      "required": {
+        "family_id": "energy_functional",
+        "canonical_form": "E[phi] = int((|nabla(phi)|^2 + k^2 phi^2)dV)",
+        "ontology_tags_all": [
+          "energy_functional",
+          "variational_principle",
+          "euler_lagrange_candidate"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=energy_functional\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "coupled_mode_interaction",
+      "input": "\\ddot{x} + \\omega_1^2 x + \\epsilon y = 0,\\quad \\ddot{y} + \\omega_2^2 y + \\epsilon x = 0",
+      "required": {
+        "family_id": "coupled_mode_interaction",
+        "canonical_form": "x_ddot + omega_1^2 x + epsilon y = 0, y_ddot + omega_2^2 y + epsilon x = 0",
+        "ontology_tags_all": [
+          "coupled_oscillators",
+          "mode_interaction",
+          "resonant_coupling"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=coupled_modes\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "invariant_transformation",
+      "input": "phi_prime(x) = phi(x-a),\\quad phi_prime(\\vec{r}) = phi(R\\vec{r})",
+      "required": {
+        "family_id": "invariant_transformation",
+        "canonical_form": "phi'(x) = phi(x-a), phi'(r) = phi(Rr)",
+        "ontology_tags_all": [
+          "translation_invariance",
+          "rotation_invariance",
+          "symmetry_transformation"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=symmetry_map\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "tensor_field_family",
+      "input": "\\nabla \\cdot T = \\vec{f}",
+      "required": {
+        "family_id": "tensor_field_family",
+        "canonical_form": "nabla · T = f",
+        "ontology_tags_all": [
+          "tensor_field",
+          "stress_like_quantity",
+          "vector_source"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=tensor_field\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "nonlinear_geometric_operator_family",
+      "input": "\\nabla \\cdot (f(\\phi) \\nabla\\phi) = 0",
+      "required": {
+        "family_id": "nonlinear_geometric_operator_family",
+        "canonical_form": "nabla · (f(phi) nabla(phi)) = 0",
+        "ontology_tags_all": [
+          "nonlinear_diffusion",
+          "geometry_dependent_flux",
+          "state_dependent_conductivity"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=nonlinear_operator\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "frequency_space_transform_family",
+      "input": "\\phi^(\\omega)=\\int \\phi(t)e^{-i\\omega t}dt",
+      "required": {
+        "family_id": "frequency_space_transform_family",
+        "canonical_form": "phi_hat(omega) = int(phi(t) e^{-iomega t} dt)",
+        "ontology_tags_all": [
+          "fourier_transform",
+          "frequency_domain",
+          "time_frequency_duality"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=frequency_domain\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "crystal_symmetry_group_family",
+      "input": "g\\cdot\\phi(\\vec{r})=\\phi(\\vec{r}), g \\in G",
+      "required": {
+        "family_id": "crystal_symmetry_group_family",
+        "canonical_form": "g · phi(r) = phi(r), g in G",
+        "ontology_tags_all": [
+          "symmetry_group",
+          "crystal_symmetry",
+          "invariance_constraint"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=symmetry_group\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    },
+    {
+      "case_id": "geometric_action_integral_family",
+      "input": "S[\\phi]=\\int L(\\phi,\\nabla\\phi)dVdt",
+      "required": {
+        "family_id": "geometric_action_integral_family",
+        "canonical_form": "S[phi] = int(L(phi,nabla(phi)) dV dt)",
+        "ontology_tags_all": [
+          "action_integral",
+          "lagrangian_density",
+          "variational_dynamics"
+        ],
+        "benchmark_output_block_pattern": "^dimensionality_inference=action_dynamics\\nboundary_condition_classification=n/a\\ngeometry_solution_options=none$"
+      }
+    }
+  ],
+  "scoring": {
+    "family_id": 0.3,
+    "canonical_form": 0.25,
+    "ontology_tags": 0.2,
+    "benchmark_output_block": 0.25,
+    "pass_threshold": 1.0,
+    "notes": "All required checks must pass per case for a full-score pass."
+  }
+}

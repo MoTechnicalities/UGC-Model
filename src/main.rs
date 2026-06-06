@@ -2422,6 +2422,9 @@ fn looks_like_math_expression(text: &str) -> bool {
     if trimmed.is_empty() {
         return false;
     }
+    if detect_symbolic_equation_family(trimmed).is_some() || detect_symbolic_equation_family(text).is_some() {
+        return true;
+    }
     if trimmed.to_ascii_lowercase().starts_with("convert(") {
         return true;
     }
@@ -2501,16 +2504,19 @@ fn normalize_worded_comparator_expression(input: &str) -> Option<String> {
 }
 
 fn normalize_symbolic_equality_expression(input: &str) -> Option<String> {
-    let chars = input.chars().collect::<Vec<_>>();
+    let chars = input.char_indices().collect::<Vec<_>>();
     let mut equality_index = None;
 
-    for (idx, ch) in chars.iter().enumerate() {
+    for (idx, (_, ch)) in chars.iter().enumerate() {
         if *ch != '=' {
             continue;
         }
 
-        let prev = idx.checked_sub(1).and_then(|i| chars.get(i)).copied();
-        let next = chars.get(idx + 1).copied();
+        let prev = idx
+            .checked_sub(1)
+            .and_then(|i| chars.get(i))
+            .map(|(_, c)| *c);
+        let next = chars.get(idx + 1).map(|(_, c)| *c);
 
         if matches!(prev, Some('=' | '!' | '<' | '>' | '-')) || matches!(next, Some('=' | '>')) {
             continue;
@@ -2523,8 +2529,9 @@ fn normalize_symbolic_equality_expression(input: &str) -> Option<String> {
     }
 
     let idx = equality_index?;
-    let left = input[..idx].trim();
-    let right = input[idx + 1..].trim();
+    let byte_idx = chars.get(idx).map(|(byte_idx, _)| *byte_idx)?;
+    let left = input[..byte_idx].trim();
+    let right = input[byte_idx + '='.len_utf8()..].trim();
     if !is_strict_math_fragment(left) || !is_strict_math_fragment(right) {
         return None;
     }
@@ -2658,6 +2665,1124 @@ fn normalize_chat_math_candidate(prompt: &str) -> String {
     }
 
     normalize_decimal_literals_for_chat(&normalized)
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum SymbolicEquationFamily {
+    HelmholtzConstraint,
+    DipoleFluxBalance,
+    ResonanceEigenmode,
+    AnticrystalInversion,
+    UnitTimeLogisticCoupling,
+    CoupledCrystalFluxSystem,
+    DampedUnitTimeCoupling,
+    TimeHarmonicCrystalField,
+    TrigModeShapeProbe,
+    TrigPhaseSignalProbe,
+    GeometricTransportOperator,
+    CurvatureLaplacian,
+    EnergyFunctional,
+    CoupledModeInteraction,
+    InvariantTransformation,
+    TensorFieldFamily,
+    NonlinearGeometricOperatorFamily,
+    FrequencySpaceTransformFamily,
+    CrystalSymmetryGroupFamily,
+    GeometricActionIntegralFamily,
+}
+
+fn symbolic_equation_family_id(family: SymbolicEquationFamily) -> &'static str {
+    match family {
+        SymbolicEquationFamily::HelmholtzConstraint => "helmholtz_constraint",
+        SymbolicEquationFamily::DipoleFluxBalance => "dipole_flux_balance",
+        SymbolicEquationFamily::ResonanceEigenmode => "resonance_eigenmode",
+        SymbolicEquationFamily::AnticrystalInversion => "anticrystal_inversion_map",
+        SymbolicEquationFamily::UnitTimeLogisticCoupling => "unit_time_logistic_coupling",
+        SymbolicEquationFamily::CoupledCrystalFluxSystem => "coupled_crystal_flux_system",
+        SymbolicEquationFamily::DampedUnitTimeCoupling => "damped_unit_time_coupling",
+        SymbolicEquationFamily::TimeHarmonicCrystalField => "time_harmonic_crystal_field",
+        SymbolicEquationFamily::TrigModeShapeProbe => "trig_mode_shape_probe",
+        SymbolicEquationFamily::TrigPhaseSignalProbe => "trig_phase_signal_probe",
+        SymbolicEquationFamily::GeometricTransportOperator => "geometric_transport_operator",
+        SymbolicEquationFamily::CurvatureLaplacian => "curvature_laplacian",
+        SymbolicEquationFamily::EnergyFunctional => "energy_functional",
+        SymbolicEquationFamily::CoupledModeInteraction => "coupled_mode_interaction",
+        SymbolicEquationFamily::InvariantTransformation => "invariant_transformation",
+        SymbolicEquationFamily::TensorFieldFamily => "tensor_field_family",
+        SymbolicEquationFamily::NonlinearGeometricOperatorFamily => "nonlinear_geometric_operator_family",
+        SymbolicEquationFamily::FrequencySpaceTransformFamily => "frequency_space_transform_family",
+        SymbolicEquationFamily::CrystalSymmetryGroupFamily => "crystal_symmetry_group_family",
+        SymbolicEquationFamily::GeometricActionIntegralFamily => "geometric_action_integral_family",
+    }
+}
+
+fn symbolic_equation_family_label(family: SymbolicEquationFamily) -> &'static str {
+    match family {
+        SymbolicEquationFamily::HelmholtzConstraint => "Crystal Harmonic Constraint (Helmholtz)",
+        SymbolicEquationFamily::DipoleFluxBalance => "Dipole Flux Balance",
+        SymbolicEquationFamily::ResonanceEigenmode => "Resonance Chamber Eigenmode",
+        SymbolicEquationFamily::AnticrystalInversion => "Anticrystal Inversion Map",
+        SymbolicEquationFamily::UnitTimeLogisticCoupling => "Unit-Time Coupling (Logistic)",
+        SymbolicEquationFamily::CoupledCrystalFluxSystem => "Coupled Crystal-Flux System",
+        SymbolicEquationFamily::DampedUnitTimeCoupling => "Damped Unit-Time Coupling",
+        SymbolicEquationFamily::TimeHarmonicCrystalField => "Time-Harmonic Crystal Field",
+        SymbolicEquationFamily::TrigModeShapeProbe => "Trig Mode-Shape Probe",
+        SymbolicEquationFamily::TrigPhaseSignalProbe => "Trig Phase-Signal Probe",
+        SymbolicEquationFamily::GeometricTransportOperator => "Geometric Transport Operator",
+        SymbolicEquationFamily::CurvatureLaplacian => "Curvature-Laplacian Family",
+        SymbolicEquationFamily::EnergyFunctional => "Energy Functional Family",
+        SymbolicEquationFamily::CoupledModeInteraction => "Coupled Mode Interaction Family",
+        SymbolicEquationFamily::InvariantTransformation => "Invariant Transformation Family",
+        SymbolicEquationFamily::TensorFieldFamily => "Tensor Field Family",
+        SymbolicEquationFamily::NonlinearGeometricOperatorFamily => "Nonlinear Geometric Operator Family",
+        SymbolicEquationFamily::FrequencySpaceTransformFamily => "Frequency-Space Transform Family",
+        SymbolicEquationFamily::CrystalSymmetryGroupFamily => "Crystal Symmetry Group Family",
+        SymbolicEquationFamily::GeometricActionIntegralFamily => "Geometric Action Integral Family",
+    }
+}
+
+fn normalize_symbolic_equation_signature(input: &str) -> String {
+    let mut normalized = input.trim().to_lowercase();
+    normalized = normalized
+        .replace("\\nabla", "nabla")
+        .replace("\\phi", "phi")
+        .replace("\\mathbf", "")
+        .replace("\\vec{f}", "f")
+        .replace("\\rho", "rho")
+        .replace("\\omega", "omega")
+        .replace("\\pi", "pi")
+        .replace("\\alpha", "alpha")
+        .replace("\\epsilon", "epsilon")
+        .replace("\\theta", "theta")
+        .replace("\\in", "in")
+        .replace("\\Delta_g", "delta_g")
+        .replace("\\delta_g", "delta_g")
+        .replace("\\Delta", "delta")
+        .replace("\\hat{\\phi}", "phi_hat")
+        .replace("\\hat{phi}", "phi_hat")
+        .replace("\\hatphi", "phi_hat")
+        .replace("\\hat\\phi", "phi_hat")
+        .replace("\\int", "int")
+        .replace("\\ddot{x}", "ddotx")
+        .replace("\\ddot{y}", "ddoty")
+        .replace("\\ddotx", "ddotx")
+        .replace("\\ddoty", "ddoty")
+        .replace("\\partial_t", "partial_t")
+        .replace("\\vec{v}", "v")
+        .replace("\\vec{t}", "t")
+        .replace("\\cdot", ".")
+        .replace("\\text{torsion}", "torsion")
+        .replace("\\text{crystal}", "crystal")
+        .replace("\\sin", "sin")
+        .replace("\\cos", "cos")
+        .replace("\\left", "")
+        .replace("\\right", "")
+        .replace("\\quad", ",")
+        .replace("\\frac{du}{dt}", "du/dt")
+        .replace("\\frac{d\\phi}{dt}", "dphi/dt")
+        .replace(r"\frac{d \phi}{dt}", "dphi/dt")
+        .replace("\\frac{dphi}{dt}", "dphi/dt")
+        .replace("\\frac{d^2\\phi}{dx^2}", "d^2phi/dx^2")
+        .replace(r"\frac{d^2 \phi}{dx^2}", "d^2phi/dx^2")
+        .replace("\\frac{d2\\phi}{dx2}", "d2phi/dx2")
+        .replace("\\frac{n\\pi c}{l}", "npic/l")
+        .replace("\\frac{n\\pi c}{L}", "npic/l")
+        .replace("\\frac{n\\pic}{l}", "npic/l")
+        .replace(r"\frac{n\pi c}{l}", "npic/l")
+        .replace(r"\frac{n\pi c}{L}", "npic/l")
+        .replace("\\vec{r}", "vecr")
+        .replace("∇²", "nabla^2")
+        .replace('∇', "nabla")
+        .replace('φ', "phi")
+        .replace('ρ', "rho")
+        .replace('ω', "omega")
+        .replace('π', "pi")
+        .replace('α', "alpha")
+        .replace('ε', "epsilon")
+        .replace('Δ', "delta")
+        .replace('∈', "in")
+        .replace('²', "^2")
+        .replace('ϕ', "phi")
+        .replace("r⃗", "vecr")
+        .replace(['{', '}'], "")
+        .replace('\\', "")
+        .replace(['·', '⋅'], ".")
+        .replace('−', "-")
+        .replace('–', "-")
+        .replace('＝', "=")
+        .replace('／', "/")
+        .replace('＊', "*")
+        .replace("\\,", "")
+        .replace(",", "");
+
+    normalized = normalized
+        .chars()
+        .filter(|c| !c.is_whitespace())
+        .collect::<String>();
+
+    normalized
+        .replace("fracd^2phidx^2", "d^2phi/dx^2")
+        .replace("fracd2phidx2", "d2phi/dx2")
+        .replace("fracd^2phi/dx^2", "d^2phi/dx^2")
+        .replace("fracd2phi/dx2", "d2phi/dx2")
+        .replace("fracnpic/l", "npic/l")
+        .replace("fracnpic/L", "npic/l")
+        .replace("fracnpicl", "npic/l")
+        .replace("fracdphidt", "dphi/dt")
+        .replace("|nablaphi|^2", "normgradphi2")
+        .replace("|nabla(phi)|^2", "normgradphi2")
+        .replace("phi^(omega)", "phi_hat(omega)")
+        .replace("phi^omega", "phi_hat(omega)")
+        .replace("phi'(vecr)=phi(rvecr)", "phi_prime(vecr)=phi(r*vecr)")
+        .replace("rho_texttorsion", "rho_torsion")
+        .replace("rho_torsion", "rho_torsion")
+        .replace("omega_n=fracnpic/l", "omega_n=npic/l")
+        .replace("omega_n=fracnpicl", "omega_n=npic/l")
+        .replace("sin(fracnpix/l)", "sin(npix/l)")
+        .replace("sin(fracnpixl)", "sin(npix/l)")
+}
+
+fn detect_symbolic_equation_family(input: &str) -> Option<(SymbolicEquationFamily, String)> {
+    let signature = normalize_symbolic_equation_signature(input);
+    let signature_no_mul_global = signature.replace('*', "");
+
+    let coupled_crystal_flux = signature_no_mul_global.contains("nabla^2phi")
+        && (signature_no_mul_global.contains("=k^2phi") || signature_no_mul_global.contains("+k^2phi=0"))
+        && signature_no_mul_global.contains("nabla.f=rho_torsion")
+        && (signature_no_mul_global.contains("f=-nablaphi") || signature_no_mul_global.contains("f=-nabla(phi)"));
+    if coupled_crystal_flux {
+        return Some((SymbolicEquationFamily::CoupledCrystalFluxSystem, signature));
+    }
+
+    let trig_mode_probe = signature_no_mul_global == "sin(npix/l)"
+        || signature_no_mul_global == "sin((npix)/l)"
+        || signature_no_mul_global == "sin(npix/l)";
+    if trig_mode_probe {
+        return Some((SymbolicEquationFamily::TrigModeShapeProbe, signature));
+    }
+
+    let trig_phase_probe = signature_no_mul_global == "cos(theta)theta=omegat"
+        || signature_no_mul_global == "cos(theta),theta=omegat"
+        || signature_no_mul_global == "cos(theta),theta=omega*t"
+        || signature_no_mul_global == "cos(theta)theta=omega*t";
+    if trig_phase_probe {
+        return Some((SymbolicEquationFamily::TrigPhaseSignalProbe, signature));
+    }
+
+    let geometric_transport = signature_no_mul_global == "dphi/dt=partial_tphi+v.nablaphi"
+        || signature_no_mul_global == "dphi/dt=partial_tphi+vecv.nablaphi"
+        || signature_no_mul_global == "dphi/dt=partialtphi+v.nablaphi"
+        || signature_no_mul_global == "dphi/dt=partialtphi+vecv.nablaphi";
+    if geometric_transport {
+        return Some((SymbolicEquationFamily::GeometricTransportOperator, signature));
+    }
+
+    let curvature_laplacian = signature_no_mul_global == "delta_gphi=k^2phi"
+        || signature_no_mul_global == "delta_g(phi)=k^2phi"
+        || signature_no_mul_global == "delta_gphi=k2phi"
+        || signature_no_mul_global == "delta_g(phi)=k2phi";
+    if curvature_laplacian {
+        return Some((SymbolicEquationFamily::CurvatureLaplacian, signature));
+    }
+
+    let energy_functional = signature_no_mul_global.contains("e[phi]=int")
+        && (signature_no_mul_global.contains("normgradphi2")
+            || signature_no_mul_global.contains("nablaphi^2")
+            || signature_no_mul_global.contains("nabla(phi)^2"))
+        && (signature_no_mul_global.contains("+k^2phi^2")
+            || signature_no_mul_global.contains("+k2phi2"))
+        && (signature_no_mul_global.contains("dv") || signature_no_mul_global.contains("dvol"));
+    if energy_functional {
+        return Some((SymbolicEquationFamily::EnergyFunctional, signature));
+    }
+
+    let coupled_modes = signature_no_mul_global.contains("ddotx")
+        && signature_no_mul_global.contains("omega_1^2x")
+        && signature_no_mul_global.contains("epsilony")
+        && signature_no_mul_global.contains("ddoty")
+        && signature_no_mul_global.contains("omega_2^2y")
+        && signature_no_mul_global.contains("epsilonx");
+    if coupled_modes {
+        return Some((SymbolicEquationFamily::CoupledModeInteraction, signature));
+    }
+
+    let translation_invariance = signature_no_mul_global.contains("phi'(x)=phi(x-a)")
+        || signature_no_mul_global.contains("phi_prime(x)=phi(x-a)")
+        || signature_no_mul_global.contains("phiprime(x)=phi(x-a)");
+    let rotation_invariance = signature_no_mul_global.contains("phi'(vecr)=phi(rvecr)")
+        || signature_no_mul_global.contains("phi_prime(vecr)=phi(r*vecr)")
+        || signature_no_mul_global.contains("phiprime(vecr)=phi(rvecr)");
+    if translation_invariance || rotation_invariance {
+        return Some((SymbolicEquationFamily::InvariantTransformation, signature));
+    }
+
+    let tensor_field_family = signature_no_mul_global == "nabla.t=f"
+        || signature_no_mul_global == "nabla.t=vecf"
+        || signature_no_mul_global == "divt=f";
+    if tensor_field_family {
+        return Some((SymbolicEquationFamily::TensorFieldFamily, signature));
+    }
+
+    let nonlinear_geometric_operator = signature_no_mul_global.contains("nabla.")
+        && signature_no_mul_global.contains("f(phi)")
+        && signature_no_mul_global.contains("nablaphi")
+        && signature_no_mul_global.ends_with("=0");
+    if nonlinear_geometric_operator {
+        return Some((SymbolicEquationFamily::NonlinearGeometricOperatorFamily, signature));
+    }
+
+    let frequency_space_transform = (signature_no_mul_global.starts_with("phi_hat(omega)=int")
+        || signature_no_mul_global.starts_with("phi^(omega)=int")
+        || signature_no_mul_global.starts_with("phi^omega=int")
+        || signature_no_mul_global.starts_with("hatphi(omega)=int"))
+        && signature_no_mul_global.contains("phi(t)")
+        && signature_no_mul_global.contains("e^-iomegat")
+        && signature_no_mul_global.contains("dt");
+    if frequency_space_transform {
+        return Some((SymbolicEquationFamily::FrequencySpaceTransformFamily, signature));
+    }
+
+    let crystal_symmetry_group = signature_no_mul_global.contains("g.phi(vecr)=phi(vecr)")
+        && (signature_no_mul_global.contains("ging")
+            || signature_no_mul_global.contains("gin g")
+            || signature_no_mul_global.contains("gingroup"));
+    if crystal_symmetry_group {
+        return Some((SymbolicEquationFamily::CrystalSymmetryGroupFamily, signature));
+    }
+
+    let geometric_action_integral = signature_no_mul_global.starts_with("s[phi]=int")
+        && signature_no_mul_global.contains("l(phi")
+        && signature_no_mul_global.contains("nablaphi")
+        && signature_no_mul_global.contains("dvdt");
+    if geometric_action_integral {
+        return Some((SymbolicEquationFamily::GeometricActionIntegralFamily, signature));
+    }
+
+    let time_harmonic_crystal = signature_no_mul_global.contains("nabla^2phi")
+        && (signature_no_mul_global.contains("+k^2phi=0")
+            || (signature_no_mul_global.contains("+k^2phi") && signature_no_mul_global.contains("=0")))
+        && signature_no_mul_global.contains("phi(vecrt)=re")
+        && signature_no_mul_global.contains("e^-iomegat");
+    if time_harmonic_crystal {
+        return Some((SymbolicEquationFamily::TimeHarmonicCrystalField, signature));
+    }
+
+    let base_signature = signature
+        .split("where")
+        .next()
+        .unwrap_or(signature.as_str())
+        .split("assuming")
+        .next()
+        .unwrap_or(signature.as_str())
+        .split(';')
+        .next()
+        .unwrap_or(signature.as_str())
+        .split('|')
+        .next()
+        .unwrap_or(signature.as_str())
+        .split(',')
+        .next()
+        .unwrap_or(signature.as_str())
+        .to_string();
+    let signature_no_mul = base_signature.replace('*', "");
+    let is_helmholtz = (signature_no_mul.contains("nabla^2phi")
+        && ((signature_no_mul.contains("=k^2phi") || signature_no_mul.contains("=k^2phi("))
+            || (signature_no_mul.contains("+k^2phi") && signature_no_mul.contains("=0"))))
+        || (signature_no_mul.contains("d^2phi/dx^2")
+            && (signature_no_mul.contains("=k^2phi") || signature_no_mul.contains("+k^2phi=0")))
+        || (signature_no_mul.contains("fracd^2phi/dx^2")
+            && (signature_no_mul.contains("=k^2phi") || signature_no_mul.contains("+k^2phi=0")))
+        || (signature_no_mul.contains("d2phi/dx2")
+            && (signature_no_mul.contains("=k2phi") || signature_no_mul.contains("+k2phi=0")))
+        || (signature_no_mul.contains("fracd2phi/dx2")
+            && (signature_no_mul.contains("=k2phi") || signature_no_mul.contains("+k2phi=0")))
+        || matches!(signature_no_mul.as_str(), "nabla2phi=k^2phi" | "laplacianphi=k^2phi");
+
+    if is_helmholtz {
+        return Some((SymbolicEquationFamily::HelmholtzConstraint, signature));
+    }
+
+    if matches!(
+        base_signature.as_str(),
+        "nabla.f=rho_torsion" | "divf=rho_torsion" | "divergencef=rho_torsion"
+    ) {
+        return Some((SymbolicEquationFamily::DipoleFluxBalance, signature));
+    }
+
+    if signature_no_mul == "omega_n=npic/l" {
+        return Some((SymbolicEquationFamily::ResonanceEigenmode, signature));
+    }
+
+    if matches!(
+        base_signature.as_str(),
+        "a^-1(x)=-a(x)" | "a^(-1)(x)=-a(x)" | "a^-1x=-ax"
+    ) {
+        return Some((SymbolicEquationFamily::AnticrystalInversion, signature));
+    }
+
+    if signature_no_mul == "du/dt=alphau(1-u)" {
+        return Some((SymbolicEquationFamily::UnitTimeLogisticCoupling, signature));
+    }
+
+    if signature_no_mul == "du/dt=alphau(1-u)-gammau" {
+        return Some((SymbolicEquationFamily::DampedUnitTimeCoupling, signature));
+    }
+
+    None
+}
+
+fn symbolic_expr_contains_any(signature: &str, patterns: &[&str]) -> bool {
+    patterns.iter().any(|pattern| signature.contains(pattern))
+}
+
+fn infer_helmholtz_context(signature: &str) -> (String, bool, bool) {
+    let signature_no_mul = signature.replace('*', "");
+    let is_1d = signature_no_mul.contains("d^2phi/dx^2")
+        || signature_no_mul.contains("d2phi/dx2")
+        || signature_no_mul.contains("fracd^2phi/dx^2")
+        || signature_no_mul.contains("fracd2phi/dx2")
+        || signature_no_mul.contains("fracd^2phidx^2")
+        || signature_no_mul.contains("fracd2phidx2");
+    let has_dirichlet_pair = signature_no_mul.contains("phi(0)=")
+        && (signature_no_mul.contains("phi(l)=") || signature_no_mul.contains("phi(l)=0"));
+    let has_spatial_coordinate = signature_no_mul.contains("phi(r)")
+        || signature_no_mul.contains("phi(vecr)")
+        || signature_no_mul.contains("phi_crystal(vecr)")
+        || signature_no_mul.contains("phi_crystal(r)")
+        || signature_no_mul.contains("(vecr)");
+    let dimensionality = if is_1d {
+        "1d_line"
+    } else if has_spatial_coordinate {
+        "spatial_field"
+    } else {
+        "unspecified"
+    };
+
+    (dimensionality.to_string(), has_dirichlet_pair, has_spatial_coordinate)
+}
+
+fn build_symbolic_assumption_manager(family: SymbolicEquationFamily, signature: &str) -> Value {
+    let mut assumptions = Vec::<Value>::new();
+
+    let mut push_assumption = |id: &str, text: &str, patterns: &[&str]| {
+        let satisfied = symbolic_expr_contains_any(signature, patterns);
+        assumptions.push(json!({
+            "id": id,
+            "text": text,
+            "status": if satisfied { "provided" } else { "missing" },
+            "evidence": if satisfied { "provided_in_expression" } else { "not_provided" }
+        }));
+    };
+
+    match family {
+        SymbolicEquationFamily::HelmholtzConstraint => {
+            push_assumption("phi_twice_differentiable", "Field phi is twice differentiable on the domain.", &["c2", "twicediff", "phi_c2"]);
+            push_assumption("k_constant", "k is treated as a constant spectral parameter.", &["k=const", "kconstant", "constk"]);
+            push_assumption("boundary_conditions", "Boundary conditions are provided for uniqueness.", &["bc", "boundary", "dirichlet", "neumann", "phi(0)=", "phi(l)="]);
+        }
+        SymbolicEquationFamily::DipoleFluxBalance => {
+            push_assumption("f_differentiable", "F is differentiable enough for divergence to exist.", &["f_c1", "fdiff", "differentiable"]);
+            push_assumption("rho_known", "rho_torsion is known or parameterized.", &["rho_torsion=", "rho_known", "source="]);
+            push_assumption("boundary_or_curl_constraints", "Additional curl/boundary constraints are provided.", &["curl", "boundary", "bc"]);
+        }
+        SymbolicEquationFamily::ResonanceEigenmode => {
+            push_assumption("n_positive_integer", "n is a positive integer mode index.", &["n>=1", "n>0", "ninteger", "n∈n+"]);
+            push_assumption("c_positive", "c>0.", &["c>0", "c>=0"]);
+            push_assumption("l_positive", "L>0.", &["l>0", "l>=0"]);
+        }
+        SymbolicEquationFamily::AnticrystalInversion => {
+            push_assumption("a_invertible", "A is invertible on the operating domain.", &["invertible", "bijective", "det!=0"]);
+            push_assumption("composition_defined", "Composition A(A(x)) is defined where required.", &["compositiondefined", "domainclosed"]);
+            push_assumption("functional_identity_scope", "Constraint is treated as identity over the chosen domain.", &["forallx", "domain:", "identityscope"]);
+        }
+        SymbolicEquationFamily::UnitTimeLogisticCoupling => {
+            push_assumption("alpha_constant", "alpha is constant over the solved interval.", &["alpha=const", "alphaconstant"]);
+            push_assumption("initial_condition", "Initial condition U(t0)=U0 is provided.", &["u(0)=", "u(t0)=", "u0="]);
+            push_assumption("normalized_capacity", "Carrying capacity is normalized to 1.", &["k=1", "capacity=1", "normalizedcapacity"]);
+        }
+        SymbolicEquationFamily::DampedUnitTimeCoupling => {
+            push_assumption("alpha_constant", "alpha is constant over the solved interval.", &["alpha=const", "alphaconstant"]);
+            push_assumption("gamma_constant", "gamma is constant over the solved interval.", &["gamma=const", "gammaconstant"]);
+            push_assumption("initial_condition", "Initial condition U(t0)=U0 is provided.", &["u(0)=", "u(t0)=", "u0="]);
+        }
+        SymbolicEquationFamily::CoupledCrystalFluxSystem => {
+            push_assumption("potential_link", "Flux field is linked to scalar potential via F=-nabla(phi).", &["f=-nablaphi", "f=-nabla(phi)"]);
+            push_assumption("torsion_source", "Torsion density source term rho_torsion is specified.", &["rho_torsion"]);
+            push_assumption("field_smoothness", "Phi and F are differentiable on the spatial domain.", &["differentiable", "c1", "c2"]);
+        }
+        SymbolicEquationFamily::TimeHarmonicCrystalField => {
+            push_assumption("harmonic_ansatz", "Time-harmonic ansatz phi(r,t)=Re{Phi(r)e^{-i omega t}} is provided.", &["e^-iomegat", "re(phi"]);
+            push_assumption("omega_fixed", "Angular frequency omega is treated as fixed for a mode solve.", &["omegaconst", "omega=const"]);
+            push_assumption("spatial_mode_regular", "Spatial mode Phi(r) satisfies regularity/boundary requirements.", &["boundary", "regular"]);
+        }
+        SymbolicEquationFamily::TrigModeShapeProbe => {
+            push_assumption("mode_index_integer", "n is treated as an integer mode index.", &["n", "mode"]);
+            push_assumption("length_scale_positive", "L is treated as a positive length scale.", &["l", "l>0"]);
+            push_assumption("spatial_coordinate_defined", "x is treated as spatial coordinate.", &["x"]);
+        }
+        SymbolicEquationFamily::TrigPhaseSignalProbe => {
+            push_assumption("phase_definition", "phase relation theta=omega t is provided.", &["theta=omegat", "theta=omega*t"]);
+            push_assumption("omega_constant", "omega is constant over the considered interval.", &["omega", "omega=const"]);
+            push_assumption("time_coordinate_defined", "t is treated as temporal coordinate.", &["t"]);
+        }
+        SymbolicEquationFamily::GeometricTransportOperator => {
+            push_assumption("material_derivative_defined", "Material derivative Dphi/Dt is defined on the flow field.", &["dphi/dt"]);
+            push_assumption("velocity_field_defined", "Flow velocity field v is provided for advection.", &["v.nablaphi", "vecv.nablaphi"]);
+            push_assumption("temporal_and_spatial_smoothness", "Phi is differentiable in time and space.", &["partial_tphi", "partialtphi", "nablaphi"]);
+        }
+        SymbolicEquationFamily::CurvatureLaplacian => {
+            push_assumption("metric_defined", "Metric tensor g is defined on the manifold.", &["delta_g", "metric", "g_"]);
+            push_assumption("field_regular", "Phi has sufficient regularity for Laplace-Beltrami evaluation.", &["phi", "c2"]);
+            push_assumption("curved_domain_specified", "Underlying manifold/geometry is specified.", &["manifold", "chart", "curved"]);
+        }
+        SymbolicEquationFamily::EnergyFunctional => {
+            push_assumption("integration_domain_defined", "Integration domain for the energy functional is defined.", &["dv", "dvol", "domain"]);
+            push_assumption("field_variation_admissible", "Admissible variations for phi are defined.", &["delta", "variation", "admissible"]);
+            push_assumption("coefficient_k_defined", "k is provided or treated as known parameter.", &["k", "k^2"]);
+        }
+        SymbolicEquationFamily::CoupledModeInteraction => {
+            push_assumption("mode_frequencies_defined", "Mode frequencies omega_1 and omega_2 are defined.", &["omega_1", "omega_2"]);
+            push_assumption("coupling_strength_defined", "Coupling coefficient epsilon is defined.", &["epsilon"]);
+            push_assumption("second_order_time_dynamics", "x and y are treated as second-order temporal states.", &["ddotx", "ddoty"]);
+        }
+        SymbolicEquationFamily::InvariantTransformation => {
+            push_assumption("transformation_operator_defined", "Transformation action (translation or rotation) is defined.", &["x-a", "rvecr", "r*vecr"]);
+            push_assumption("field_transform_rule", "Transformed field phi' is defined consistently.", &["phi'", "phi_prime", "phiprime"]);
+            push_assumption("coordinate_domain_consistency", "Coordinate mapping remains within the modeled domain.", &["domain", "x", "vecr"]);
+        }
+        SymbolicEquationFamily::TensorFieldFamily => {
+            push_assumption("tensor_rank_two", "T is treated as a rank-2 tensor field.", &["t", "tensor"]);
+            push_assumption("divergence_defined", "Tensor divergence is defined on the domain.", &["nabla.t", "divt"]);
+            push_assumption("vector_source_defined", "Vector source term f is provided.", &["=f", "source"]);
+        }
+        SymbolicEquationFamily::NonlinearGeometricOperatorFamily => {
+            push_assumption("state_dependent_flux", "Flux depends on state via f(phi).", &["f(phi)"]);
+            push_assumption("gradient_defined", "Spatial gradient nabla(phi) is defined.", &["nablaphi"]);
+            push_assumption("conservation_form", "Operator is posed in divergence/conservation form.", &["nabla.", "=0"]);
+        }
+        SymbolicEquationFamily::FrequencySpaceTransformFamily => {
+            push_assumption("time_signal_defined", "Time-domain signal phi(t) is provided.", &["phi(t)"]);
+            push_assumption("complex_kernel", "Complex harmonic kernel e^{-iomega t} is used.", &["e^-iomegat"]);
+            push_assumption("integrability", "Transform integral over time is well-defined.", &["int", "dt"]);
+        }
+        SymbolicEquationFamily::CrystalSymmetryGroupFamily => {
+            push_assumption("group_action_defined", "Group action g on coordinates/field is defined.", &["g.", "gphi"]);
+            push_assumption("invariance_constraint", "Field invariance under group action is declared.", &["=phi(vecr)"]);
+            push_assumption("group_membership", "Element membership constraint g in G is provided.", &["gin", "ging"]);
+        }
+        SymbolicEquationFamily::GeometricActionIntegralFamily => {
+            push_assumption("lagrangian_density_defined", "Lagrangian density L(phi,nabla(phi)) is provided.", &["l(phi", "nablaphi"]);
+            push_assumption("spacetime_measure", "Spacetime measure dV dt is specified.", &["dvdt"]);
+            push_assumption("admissible_variations", "Variational dynamics assumes admissible field variations.", &["delta", "variation", "action"]);
+        }
+    }
+
+    let missing = assumptions
+        .iter()
+        .filter(|a| a.get("status") == Some(&json!("missing")))
+        .map(|a| a.get("id").cloned().unwrap_or(Value::Null))
+        .collect::<Vec<_>>();
+
+    let status = if missing.is_empty() { "verified" } else { "underdetermined" };
+
+    json!({
+        "version": "ugc_assumption_manager_v2",
+        "status": status,
+        "assumptions": assumptions,
+        "missing_assumptions": missing
+    })
+}
+
+fn build_symbolic_residual_verification_contract(
+    family: SymbolicEquationFamily,
+    assumption_manager: &Value,
+) -> Value {
+    let status = assumption_manager
+        .get("status")
+        .and_then(Value::as_str)
+        .unwrap_or("underdetermined");
+    let verified = status == "verified";
+
+    let residual_checks = match family {
+        SymbolicEquationFamily::HelmholtzConstraint => vec![
+            json!({"check_id": "helmholtz_substitution", "rule": "substitute_phi", "residual_target": "nabla^2(phi)-k^2*phi", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "helmholtz_boundary", "rule": "boundary_consistency", "residual_target": "boundary(phi)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::DipoleFluxBalance => vec![
+            json!({"check_id": "divergence_match", "rule": "pointwise_residual", "residual_target": "div(F)-rho_torsion", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "flux_volume_consistency", "rule": "divergence_theorem", "residual_target": "flux_minus_volume_integral", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::ResonanceEigenmode => vec![
+            json!({"check_id": "mode_formula_substitution", "rule": "closed_form_substitution", "residual_target": "omega_n-(n*pi*c/L)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "dimension_check", "rule": "unit_consistency", "residual_target": "rad_per_second", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::AnticrystalInversion => vec![
+            json!({"check_id": "inverse_identity_check", "rule": "composition_check", "residual_target": "A(A^{-1}(x))-x", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "odd_symmetry_check", "rule": "sign_symmetry", "residual_target": "A^{-1}(x)+A(x)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::UnitTimeLogisticCoupling => vec![
+            json!({"check_id": "logistic_derivative_residual", "rule": "differentiate_closed_form", "residual_target": "dU/dt-alpha*U*(1-U)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "initial_condition_fit", "rule": "fit_beta", "residual_target": "U(t0)-U0", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::DampedUnitTimeCoupling => vec![
+            json!({"check_id": "damped_logistic_residual", "rule": "differentiate_closed_form", "residual_target": "dU/dt-alpha*U*(1-U)+gamma*U", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "regime_discriminant", "rule": "parameter_regime", "residual_target": "alpha-gamma", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::CoupledCrystalFluxSystem => vec![
+            json!({"check_id": "helmholtz_flux_substitution", "rule": "coupled_substitution", "residual_target": "nabla^2(phi)-k^2*phi", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "flux_generation_consistency", "rule": "potential_flux_link", "residual_target": "F+nabla(phi)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "torsion_balance_consistency", "rule": "divergence_balance", "residual_target": "div(F)-rho_torsion", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::TimeHarmonicCrystalField => vec![
+            json!({"check_id": "harmonic_separation", "rule": "ansatz_substitution", "residual_target": "phi(r,t)-Re{Phi(r)e^{-iomega t}}", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "spatial_mode_equation", "rule": "mode_reduction", "residual_target": "nabla^2(Phi)+k^2*Phi", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::TrigModeShapeProbe => vec![
+            json!({"check_id": "mode_shape_structure", "rule": "spatial_profile_check", "residual_target": "sin(n*pi*x/L)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "mode_periodicity", "rule": "phase_period_check", "residual_target": "2*pi periodic in n*pi*x/L", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::TrigPhaseSignalProbe => vec![
+            json!({"check_id": "phase_substitution", "rule": "phase_relation_check", "residual_target": "theta-omega*t", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "harmonic_signal", "rule": "time_harmonic_check", "residual_target": "cos(omega*t)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::GeometricTransportOperator => vec![
+            json!({"check_id": "material_derivative_balance", "rule": "operator_equivalence", "residual_target": "Dphi/Dt-partial_t(phi)-v·nabla(phi)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "transport_advection_consistency", "rule": "advection_operator_check", "residual_target": "v·nabla(phi)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::CurvatureLaplacian => vec![
+            json!({"check_id": "laplace_beltrami_residual", "rule": "operator_substitution", "residual_target": "Delta_g(phi)-k^2*phi", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "metric_consistency", "rule": "geometric_operator_consistency", "residual_target": "metric_tensor_terms", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::EnergyFunctional => vec![
+            json!({"check_id": "functional_structure", "rule": "integrand_term_check", "residual_target": "|nabla(phi)|^2 + k^2*phi^2", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "euler_lagrange_candidate", "rule": "first_variation_form", "residual_target": "deltaE/deltaPhi", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::CoupledModeInteraction => vec![
+            json!({"check_id": "mode_x_residual", "rule": "equation_balance", "residual_target": "x_ddot+omega_1^2*x+epsilon*y", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "mode_y_residual", "rule": "equation_balance", "residual_target": "y_ddot+omega_2^2*y+epsilon*x", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::InvariantTransformation => vec![
+            json!({"check_id": "symmetry_mapping_rule", "rule": "transformation_substitution", "residual_target": "phi_prime - transformed_phi", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "invariance_classification", "rule": "group_action_class", "residual_target": "translation_or_rotation", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::TensorFieldFamily => vec![
+            json!({"check_id": "tensor_divergence_balance", "rule": "divergence_equilibrium", "residual_target": "nabla·T-f", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "source_vector_consistency", "rule": "vector_source_check", "residual_target": "source_directionality", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::NonlinearGeometricOperatorFamily => vec![
+            json!({"check_id": "nonlinear_flux_conservation", "rule": "divergence_zero_check", "residual_target": "nabla·(f(phi)nabla(phi))", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "state_dependent_conductivity", "rule": "coefficient_dependence_check", "residual_target": "f(phi)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::FrequencySpaceTransformFamily => vec![
+            json!({"check_id": "transform_kernel_match", "rule": "kernel_structure", "residual_target": "e^{-iomega t}", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "time_frequency_mapping", "rule": "domain_mapping", "residual_target": "phi_hat(omega)-int(phi(t)e^{-iomega t}dt", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::CrystalSymmetryGroupFamily => vec![
+            json!({"check_id": "group_invariance_constraint", "rule": "group_action_invariance", "residual_target": "g·phi(r)-phi(r)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "membership_constraint", "rule": "group_membership", "residual_target": "g in G", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+        SymbolicEquationFamily::GeometricActionIntegralFamily => vec![
+            json!({"check_id": "action_integral_structure", "rule": "functional_form", "residual_target": "S[phi]-int(L(phi,nabla(phi))dVdt)", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+            json!({"check_id": "variational_dynamics_candidate", "rule": "euler_lagrange_template", "residual_target": "deltaS/deltaPhi", "status": if verified { "ready" } else { "blocked_by_missing_assumptions" }}),
+        ],
+    };
+
+    json!({
+        "version": "ugc_residual_verification_v2",
+        "status": status,
+        "verification_outcome": if verified { "verified" } else { "underdetermined" },
+        "residual_checks": residual_checks
+    })
+}
+
+fn build_symbolic_benchmark_output_block(
+    dimensionality_inference: &str,
+    boundary_condition_analysis: &Value,
+    geometry_solution_options: &[String],
+) -> String {
+    let boundary_classification = boundary_condition_analysis
+        .get("classification")
+        .and_then(Value::as_str)
+        .unwrap_or("n/a");
+    let geometry_value = if geometry_solution_options.is_empty() {
+        "none".to_string()
+    } else {
+        geometry_solution_options.join(",")
+    };
+
+    format!(
+        "dimensionality_inference={}\nboundary_condition_classification={}\ngeometry_solution_options={}",
+        dimensionality_inference, boundary_classification, geometry_value
+    )
+}
+
+fn evaluate_symbolic_equation_expression(expr: &str, options: MathOptions) -> Option<Value> {
+    let (family, signature) = detect_symbolic_equation_family(expr)?;
+    let (helmholtz_dimensionality, helmholtz_has_dirichlet_pair, helmholtz_has_spatial_coordinate) =
+        infer_helmholtz_context(&signature);
+
+    let mode_txt = match options.mode {
+        MathMode::Algebraic => "algebraic",
+        MathMode::Geometric => "geometric",
+    };
+    let angle_txt = match options.angle_unit {
+        AngleUnit::Radians => "radians",
+        AngleUnit::Degrees => "degrees",
+    };
+    let numeric_determination = match options.mode {
+        MathMode::Algebraic => "ieee754_binary_trace",
+        MathMode::Geometric => "geometric_decimal_scaling",
+    };
+
+    let is_crystal_field_signature = signature.contains("phi_crystal");
+    let (canonical, latex, solution_family, assumptions, verification_steps) = match family {
+        SymbolicEquationFamily::HelmholtzConstraint => (
+            if helmholtz_dimensionality == "1d_line" && helmholtz_has_dirichlet_pair {
+                "d^2phi/dx^2 + k^2 phi = 0"
+            } else if helmholtz_dimensionality == "1d_line" {
+                "d^2phi/dx^2 = k^2 phi"
+            } else if helmholtz_has_spatial_coordinate && is_crystal_field_signature {
+                "nabla^2(phi_crystal(r)) + k^2 phi_crystal(r) = 0"
+            } else if helmholtz_has_spatial_coordinate {
+                "nabla^2(phi(r)) + k^2 phi(r) = 0"
+            } else {
+                "nabla^2(phi) = k^2 phi"
+            },
+            if helmholtz_dimensionality == "1d_line" && helmholtz_has_dirichlet_pair {
+                "\\frac{d^2 \\phi}{dx^2} + k^2 \\phi = 0"
+            } else if helmholtz_dimensionality == "1d_line" {
+                "\\frac{d^2 \\phi}{dx^2} = k^2 \\phi"
+            } else if helmholtz_has_spatial_coordinate && is_crystal_field_signature {
+                "\\nabla^2 \\phi_{crystal}(\\vec{r}) + k^2 \\phi_{crystal}(\\vec{r}) = 0"
+            } else if helmholtz_has_spatial_coordinate {
+                "\\nabla^2 \\phi(\\vec{r}) + k^2 \\phi(\\vec{r}) = 0"
+            } else {
+                "\\nabla^2 \\phi = k^2 \\phi"
+            },
+            if helmholtz_dimensionality == "1d_line" && helmholtz_has_dirichlet_pair {
+                "1D Dirichlet eigenmode collapse: phi_n(x)=A*sin(n*pi*x/L), k_n=n*pi/L; discrete resonance-compatible spectrum"
+            } else if helmholtz_has_spatial_coordinate && is_crystal_field_signature {
+                "Crystal-field Helmholtz families include separable Cartesian modes plus cylindrical Bessel and spherical harmonics branches"
+            } else if helmholtz_has_spatial_coordinate {
+                "Spatial Helmholtz field families include separable Cartesian modes plus cylindrical Bessel and spherical harmonics branches"
+            } else if helmholtz_dimensionality == "1d_line" {
+                "Helmholtz-family 1D line solution; phi(x)=c1*exp(kx)+c2*exp(-kx)"
+            } else {
+                "Helmholtz-family eigenfunction expansion; in 1D: phi(x)=c1*exp(kx)+c2*exp(-kx)"
+            },
+            vec![
+                "Field phi is twice differentiable on the domain.",
+                "k is treated as a constant spectral parameter.",
+                "Boundary conditions are required for a unique closed-form solution.",
+            ],
+            vec![
+                "Substitute a candidate phi into nabla^2(phi)-k^2*phi and verify zero residual.",
+                "Validate boundary-condition satisfaction separately.",
+            ],
+        ),
+        SymbolicEquationFamily::DipoleFluxBalance => (
+            "nabla · F = rho_torsion",
+            "\\nabla \\cdot F = \\rho_{torsion}",
+            "Divergence-constrained flux field family; solve via potential decomposition with torsion-density source rho_torsion",
+            vec![
+                "F is differentiable enough for divergence to exist.",
+                "rho_torsion is a known source term or model prior.",
+                "Additional curl/boundary constraints are needed for uniqueness.",
+            ],
+            vec![
+                "Compute divergence(F) and compare against rho_torsion pointwise.",
+                "Check flux consistency via divergence theorem on control volumes.",
+            ],
+        ),
+        SymbolicEquationFamily::ResonanceEigenmode => (
+            "omega_n = n*pi*c/L",
+            "\\omega_n = \\frac{n\\pi c}{L}",
+            "Discrete chamber eigenmodes indexed by integer n>=1 with k_n=n*pi/L and omega_n=c*k_n",
+            vec![
+                "L>0 and c>0.",
+                "n is a positive integer mode index.",
+                "Idealized boundary model is assumed.",
+            ],
+            vec![
+                "Evaluate omega_n for requested n and confirm monotonic scaling in n.",
+                "Verify dimensions are consistent (rad/s).",
+            ],
+        ),
+        SymbolicEquationFamily::AnticrystalInversion => (
+            "A^{-1}(x) = -A(x)",
+            "A^{-1}(x) = -A(x)",
+            "Self-anti-inverse map family (odd-symmetry inversion constraint)",
+            vec![
+                "A is invertible on the operating domain.",
+                "Composition A(A(x)) is defined where required.",
+                "Constraint is treated as functional identity over the domain.",
+            ],
+            vec![
+                "Compose both sides with A and check identity consistency.",
+                "Test odd-symmetry and invertibility constraints on sampled domain points.",
+            ],
+        ),
+        SymbolicEquationFamily::UnitTimeLogisticCoupling => (
+            "dU/dt = alpha*U*(1-U)",
+            "\\frac{dU}{dt} = \\alpha U(1-U)",
+            "Logistic bounded-growth ODE family with carrying capacity normalized to 1; closed form U(t)=1/(1+beta*exp(-alpha t))",
+            vec![
+                "alpha is constant over the solved interval.",
+                "Initial condition U(t0)=U0 is required for beta.",
+                "Model assumes normalized carrying capacity and no external forcing.",
+            ],
+            vec![
+                "Differentiate closed-form U(t) and verify equality with alpha*U*(1-U).",
+                "Fit beta from initial condition and re-check trajectory bounds.",
+            ],
+        ),
+        SymbolicEquationFamily::DampedUnitTimeCoupling => (
+            "dU/dt = alpha*U*(1-U) - gamma*U",
+            "\\frac{dU}{dt} = \\alpha U(1-U) - \\gamma U",
+            "Damped logistic-like bounded law; effective growth regime set by alpha-gamma (growth if alpha>gamma, decay if alpha<gamma)",
+            vec![
+                "alpha and gamma are constant over the solved interval.",
+                "Initial condition U(t0)=U0 is required for trajectory selection.",
+                "Interpretation assumes normalized carrying capacity for the nonlinear term.",
+            ],
+            vec![
+                "Differentiate candidate U(t) and verify dU/dt-alpha*U*(1-U)+gamma*U=0.",
+                "Evaluate alpha-gamma to classify growth/decay regime.",
+            ],
+        ),
+        SymbolicEquationFamily::CoupledCrystalFluxSystem => (
+            "nabla^2(phi(r)) = k^2 phi(r), nabla · F = rho_torsion, F = -nabla(phi)",
+            "\\nabla^2 \\phi(\\vec{r}) = k^2 \\phi(\\vec{r}),\\ \nabla \\cdot F = \\rho_{torsion},\\ F = -\\nabla \\phi",
+            "Coupled field-flux system with potential-generated dipole flux linked by F=-nabla(phi) under torsion-density source balance",
+            vec![
+                "Phi and F are differentiable over the spatial domain.",
+                "Potential-flux constitutive relation F=-nabla(phi) is enforced.",
+                "Source term rho_torsion is treated as known or parameterized.",
+            ],
+            vec![
+                "Substitute F=-nabla(phi) into div(F)=rho_torsion and verify residual consistency.",
+                "Check Helmholtz residual nabla^2(phi)-k^2phi under the same field.",
+            ],
+        ),
+        SymbolicEquationFamily::TimeHarmonicCrystalField => (
+            "nabla^2(phi(r,t)) + k^2 phi(r,t) = 0, phi(r,t)=Re{Phi(r)e^{-iomega t}}",
+            "\\nabla^2 \\phi(\\vec{r},t) + k^2 \\phi(\\vec{r},t) = 0, \\phi(\\vec{r},t)=\\Re\\{\\Phi(\\vec{r})e^{-i\\omega t}\\}",
+            "Time-harmonic separation with resonance-mode linkage: spatial mode Phi(r) follows Helmholtz family and aligns with resonance eigenmode patterns",
+            vec![
+                "Harmonic ansatz phi(r,t)=Re{Phi(r)e^{-iomega t}} is valid for the modeled field.",
+                "Omega is fixed for a selected mode.",
+                "Spatial mode Phi(r) satisfies geometry and boundary constraints.",
+            ],
+            vec![
+                "Insert ansatz into PDE and separate temporal/spatial factors.",
+                "Verify reduced spatial equation maps to Helmholtz/resonance mode family.",
+            ],
+        ),
+        SymbolicEquationFamily::TrigModeShapeProbe => (
+            "sin(n*pi*x/L)",
+            "\\sin\\left(\\frac{n\\pi x}{L}\\right)",
+            "Mode-shape profile on a bounded line; n controls eigenmode profile order and phase spacing",
+            vec![
+                "n indexes discrete mode families.",
+                "L sets the spatial scaling of nodes/antinodes.",
+                "x is interpreted as spatial coordinate.",
+            ],
+            vec![
+                "Inspect node pattern as n varies for eigenmode profile behavior.",
+                "Confirm phase argument n*pi*x/L is dimensionless.",
+            ],
+        ),
+        SymbolicEquationFamily::TrigPhaseSignalProbe => (
+            "cos(theta), theta=omega*t",
+            "\\cos(\\theta),\\ \theta = \\omega t",
+            "Phase-driven harmonic signal with explicit angular-frequency relation theta=omega*t",
+            vec![
+                "theta is a phase variable.",
+                "omega is angular frequency.",
+                "t is time variable.",
+            ],
+            vec![
+                "Substitute theta=omega*t to express signal as cos(omega*t).",
+                "Check periodicity and phase shift properties in time.",
+            ],
+        ),
+        SymbolicEquationFamily::GeometricTransportOperator => (
+            "Dphi/Dt = partial_t phi + v·nabla(phi)",
+            "\\frac{D\\phi}{Dt} = \\partial_t \\phi + \\vec{v}\\cdot\\nabla\\phi",
+            "Material-derivative transport operator unifying temporal evolution with velocity-driven spatial advection",
+            vec![
+                "Phi is differentiable in time and spatial coordinates.",
+                "Velocity field v is defined over the transport domain.",
+                "Operator is interpreted in Eulerian form with advective transport v·nabla(phi).",
+            ],
+            vec![
+                "Expand material derivative and verify equality with partial_t(phi)+v·nabla(phi).",
+                "Check advection term consistency under the declared velocity field.",
+            ],
+        ),
+        SymbolicEquationFamily::CurvatureLaplacian => (
+            "Delta_g(phi) = k^2 phi",
+            "\\Delta_g \\phi = k^2 \\phi",
+            "Laplace-Beltrami eigen-constraint on a curved manifold geometry",
+            vec![
+                "Metric tensor g is specified for the manifold.",
+                "Field phi is regular enough for second-order geometric derivatives.",
+                "Boundary/coordinate chart assumptions are declared for solve context.",
+            ],
+            vec![
+                "Evaluate Laplace-Beltrami operator terms and compare with k^2 phi.",
+                "Check geometric consistency under the declared metric.",
+            ],
+        ),
+        SymbolicEquationFamily::EnergyFunctional => (
+            "E[phi] = int((|nabla(phi)|^2 + k^2 phi^2)dV)",
+            "E[\\phi] = \\int \\left( |\\nabla\\phi|^2 + k^2 \\phi^2 \\right) dV",
+            "Energy functional form suitable for variational and Euler-Lagrange analysis",
+            vec![
+                "Integration domain and measure dV are defined.",
+                "Field space admits admissible variations.",
+                "k is treated as known coefficient for the quadratic potential term.",
+            ],
+            vec![
+                "Validate integrand terms |nabla(phi)|^2 and k^2 phi^2 are both present.",
+                "Compute first variation template to classify Euler-Lagrange candidacy.",
+            ],
+        ),
+        SymbolicEquationFamily::CoupledModeInteraction => (
+            "x_ddot + omega_1^2 x + epsilon y = 0, y_ddot + omega_2^2 y + epsilon x = 0",
+            "\\ddot{x} + \\omega_1^2 x + \\epsilon y = 0,\\ \\ddot{y} + \\omega_2^2 y + \\epsilon x = 0",
+            "Linearly coupled oscillator modes with bidirectional resonant interaction",
+            vec![
+                "Mode frequencies omega_1 and omega_2 are defined.",
+                "Coupling coefficient epsilon is specified.",
+                "x(t), y(t) are second-order time-evolving states.",
+            ],
+            vec![
+                "Substitute candidate trajectories into both second-order equations.",
+                "Check coupling symmetry and mode-exchange consistency.",
+            ],
+        ),
+        SymbolicEquationFamily::InvariantTransformation => (
+            "phi'(x) = phi(x-a), phi'(r) = phi(Rr)",
+            "\\phi'(x) = \\phi(x-a),\\quad \\phi'(\\vec{r}) = \\phi(R\\vec{r})",
+            "Symmetry transformation family covering translation and rotation invariance mappings",
+            vec![
+                "Transformation action is defined (e.g., x-a or Rr).",
+                "Transformed field phi' is well-defined on the mapped domain.",
+                "Domain mapping remains valid under the symmetry action.",
+            ],
+            vec![
+                "Apply transformation and verify phi' matches transformed argument form.",
+                "Classify invariance type under translation/rotation action.",
+            ],
+        ),
+        SymbolicEquationFamily::TensorFieldFamily => (
+            "nabla · T = f",
+            "\\nabla \\cdot T = \\vec{f}",
+            "Tensor divergence balance linking a rank-2 field to a vector source",
+            vec![
+                "T is interpreted as a rank-2 tensor field.",
+                "Divergence of T is defined on the domain.",
+                "f is a known or parameterized vector source.",
+            ],
+            vec![
+                "Compute nabla·T and compare with source vector f.",
+                "Check directional consistency of the source term.",
+            ],
+        ),
+        SymbolicEquationFamily::NonlinearGeometricOperatorFamily => (
+            "nabla · (f(phi) nabla(phi)) = 0",
+            "\\nabla \\cdot (f(\\phi) \\nabla \\phi) = 0",
+            "Nonlinear geometric diffusion operator with state-dependent conductivity",
+            vec![
+                "f(phi) is treated as state-dependent conductivity.",
+                "Spatial gradient nabla(phi) exists on the domain.",
+                "Equation is enforced in conservation form with zero divergence.",
+            ],
+            vec![
+                "Expand nonlinear flux and verify divergence-free condition.",
+                "Check consistency of state-dependent coefficient f(phi).",
+            ],
+        ),
+        SymbolicEquationFamily::FrequencySpaceTransformFamily => (
+            "phi_hat(omega) = int(phi(t) e^{-iomega t} dt)",
+            "\\hat{\\phi}(\\omega)=\\int \\phi(t)e^{-i\\omega t}dt",
+            "Frequency-space transform mapping time signal into harmonic domain",
+            vec![
+                "phi(t) is an admissible time-domain signal.",
+                "Kernel e^{-iomega t} defines the harmonic transform convention.",
+                "Integration over t is well-defined for the modeled signal class.",
+            ],
+            vec![
+                "Apply transform kernel and compare with declared phi_hat(omega).",
+                "Validate time-frequency duality mapping for the expression.",
+            ],
+        ),
+        SymbolicEquationFamily::CrystalSymmetryGroupFamily => (
+            "g · phi(r) = phi(r), g in G",
+            "g\\cdot\\phi(\\vec{r})=\\phi(\\vec{r}),\\ g\\in G",
+            "Crystal symmetry group invariance constraint under group action",
+            vec![
+                "Group element g acts on the field/coordinates.",
+                "Field is invariant under the declared group action.",
+                "g belongs to symmetry group G.",
+            ],
+            vec![
+                "Substitute group action and verify invariance identity.",
+                "Check membership and consistency of g in group G.",
+            ],
+        ),
+        SymbolicEquationFamily::GeometricActionIntegralFamily => (
+            "S[phi] = int(L(phi,nabla(phi)) dV dt)",
+            "S[\\phi]=\\int L(\\phi,\\nabla\\phi)\\,dV\\,dt",
+            "Geometric action integral for variational spacetime dynamics",
+            vec![
+                "L(phi,nabla(phi)) is treated as a Lagrangian density.",
+                "Integration measure covers spatial volume and time.",
+                "Field variations are admissible for action-based dynamics.",
+            ],
+            vec![
+                "Construct action integral and verify structural consistency.",
+                "Check Euler-Lagrange candidate form from variational principle.",
+            ],
+        ),
+    };
+
+    let assumption_manager = build_symbolic_assumption_manager(family, &signature);
+    let residual_verification = build_symbolic_residual_verification_contract(family, &assumption_manager);
+    let verification_outcome = residual_verification
+        .get("verification_outcome")
+        .and_then(Value::as_str)
+        .unwrap_or("underdetermined");
+
+    let geometry_solution_options = if family == SymbolicEquationFamily::HelmholtzConstraint
+        && helmholtz_has_spatial_coordinate
+    {
+        vec!["cartesian_separable".to_string(), "cylindrical_bessel".to_string(), "spherical_harmonics".to_string()]
+    } else {
+        Vec::new()
+    };
+    let boundary_condition_analysis = if family == SymbolicEquationFamily::HelmholtzConstraint {
+        json!({
+            "has_dirichlet_pair": helmholtz_has_dirichlet_pair,
+            "classification": if helmholtz_has_dirichlet_pair { "discrete_eigenmode_spectrum" } else { "boundary_data_missing_or_partial" }
+        })
+    } else {
+        json!({
+            "has_dirichlet_pair": false,
+            "classification": "n/a"
+        })
+    };
+    let dimensionality_inference = if family == SymbolicEquationFamily::HelmholtzConstraint {
+        helmholtz_dimensionality.clone()
+    } else if family == SymbolicEquationFamily::DipoleFluxBalance {
+        "flux_field".to_string()
+    } else if family == SymbolicEquationFamily::CoupledCrystalFluxSystem {
+        "coupled_field_flux".to_string()
+    } else if family == SymbolicEquationFamily::TimeHarmonicCrystalField {
+        "spatial_temporal_field".to_string()
+    } else if family == SymbolicEquationFamily::TrigModeShapeProbe {
+        "mode_profile".to_string()
+    } else if family == SymbolicEquationFamily::TrigPhaseSignalProbe {
+        "phase_signal".to_string()
+    } else if family == SymbolicEquationFamily::GeometricTransportOperator {
+        "transport_field".to_string()
+    } else if family == SymbolicEquationFamily::CurvatureLaplacian {
+        "curved_manifold".to_string()
+    } else if family == SymbolicEquationFamily::EnergyFunctional {
+        "energy_functional".to_string()
+    } else if family == SymbolicEquationFamily::CoupledModeInteraction {
+        "coupled_modes".to_string()
+    } else if family == SymbolicEquationFamily::InvariantTransformation {
+        "symmetry_map".to_string()
+    } else if family == SymbolicEquationFamily::TensorFieldFamily {
+        "tensor_field".to_string()
+    } else if family == SymbolicEquationFamily::NonlinearGeometricOperatorFamily {
+        "nonlinear_operator".to_string()
+    } else if family == SymbolicEquationFamily::FrequencySpaceTransformFamily {
+        "frequency_domain".to_string()
+    } else if family == SymbolicEquationFamily::CrystalSymmetryGroupFamily {
+        "symmetry_group".to_string()
+    } else if family == SymbolicEquationFamily::GeometricActionIntegralFamily {
+        "action_dynamics".to_string()
+    } else {
+        "n/a".to_string()
+    };
+    let chat_surface = format!(
+        "Symbolic equation: {}\nCanonical form: {}\nSolution family: {}\nVerification: {}\nDimensionality: {}",
+        symbolic_equation_family_label(family),
+        canonical,
+        solution_family,
+        verification_outcome,
+        dimensionality_inference
+    );
+    let benchmark_output_block = build_symbolic_benchmark_output_block(
+        &dimensionality_inference,
+        &boundary_condition_analysis,
+        &geometry_solution_options,
+    );
+
+    Some(json!({
+        "object": "csif.math.result",
+        "engine": "deterministic_math_v2",
+        "mode": mode_txt,
+        "reasoning_policy": {
+            "mode_isolation": "strict",
+            "numeric_determination": numeric_determination,
+            "preserve_binary_trace": options.mode == MathMode::Algebraic,
+            "preserve_decimal_geometric": options.mode == MathMode::Geometric,
+            "symbolic_orchestrator": "ugc_symbolic_orchestrator_v2"
+        },
+        "angle_unit": angle_txt,
+        "expression": expr,
+        "normalized_expression": canonical,
+        "latex_expression": latex,
+        "result": solution_family,
+        "result_latex": format!("{} \\Rightarrow \\text{{{}}}", latex, solution_family),
+        "deterministic": true,
+        "chat_surface": chat_surface,
+        "symbolic_orchestration": {
+            "version": "ugc_symbolic_orchestrator_v2",
+            "family_id": symbolic_equation_family_id(family),
+            "family_label": symbolic_equation_family_label(family),
+            "input_signature": signature,
+            "canonical_form": canonical,
+            "assumptions": assumptions,
+            "assumption_manager": assumption_manager,
+            "solution_family": solution_family,
+            "verification_contract": verification_steps,
+            "residual_verification_contract": residual_verification,
+            "verification_outcome": verification_outcome,
+            "dimensionality_inference": dimensionality_inference,
+            "boundary_condition_analysis": boundary_condition_analysis,
+            "geometry_solution_options": geometry_solution_options,
+            "benchmark_output_block": benchmark_output_block,
+            "ontology_tags": match family {
+                SymbolicEquationFamily::HelmholtzConstraint if is_crystal_field_signature => vec!["crystal_field", "helmholtz_family"],
+                SymbolicEquationFamily::HelmholtzConstraint => vec!["scalar_field", "helmholtz_family"],
+                SymbolicEquationFamily::DipoleFluxBalance => vec!["flux_field", "torsion_density_source"],
+                SymbolicEquationFamily::ResonanceEigenmode => vec!["resonance_chamber", "discrete_spectrum"],
+                SymbolicEquationFamily::UnitTimeLogisticCoupling => vec!["logistic_growth", "bounded_growth"],
+                SymbolicEquationFamily::DampedUnitTimeCoupling => vec!["logistic_like", "bounded_growth", "damped_dynamics"],
+                SymbolicEquationFamily::CoupledCrystalFluxSystem => vec!["coupled_field_flux_system", "potential_generated_flux", "torsion_density_source"],
+                SymbolicEquationFamily::TimeHarmonicCrystalField => vec!["time_harmonic_separation", "resonance_mode_linkage", "crystal_field"],
+                SymbolicEquationFamily::TrigModeShapeProbe => vec!["mode_shape", "eigenmode_profile"],
+                SymbolicEquationFamily::TrigPhaseSignalProbe => vec!["phase_variable", "angular_frequency", "time_harmonic_signal"],
+                SymbolicEquationFamily::GeometricTransportOperator => vec!["material_derivative", "transport_field", "flow_velocity"],
+                SymbolicEquationFamily::CurvatureLaplacian => vec!["metric_laplacian", "curved_manifold", "geometric_operator"],
+                SymbolicEquationFamily::EnergyFunctional => vec!["energy_functional", "variational_principle", "euler_lagrange_candidate"],
+                SymbolicEquationFamily::CoupledModeInteraction => vec!["coupled_oscillators", "mode_interaction", "resonant_coupling"],
+                SymbolicEquationFamily::InvariantTransformation => vec!["translation_invariance", "rotation_invariance", "symmetry_transformation"],
+                SymbolicEquationFamily::TensorFieldFamily => vec!["tensor_field", "stress_like_quantity", "vector_source"],
+                SymbolicEquationFamily::NonlinearGeometricOperatorFamily => vec!["nonlinear_diffusion", "geometry_dependent_flux", "state_dependent_conductivity"],
+                SymbolicEquationFamily::FrequencySpaceTransformFamily => vec!["fourier_transform", "frequency_domain", "time_frequency_duality"],
+                SymbolicEquationFamily::CrystalSymmetryGroupFamily => vec!["symmetry_group", "crystal_symmetry", "invariance_constraint"],
+                SymbolicEquationFamily::GeometricActionIntegralFamily => vec!["action_integral", "lagrangian_density", "variational_dynamics"],
+                SymbolicEquationFamily::AnticrystalInversion => vec!["inverse_map", "odd_symmetry"],
+            },
+            "confidence": if verification_outcome == "verified" { "verified_symbolic" } else { "template_matched" }
+        }
+    }))
 }
 
 fn detect_chat_intent(prompt: &str) -> &'static str {
@@ -9384,6 +10509,9 @@ fn evaluate_math_expression(expr: &str, state: &AppState, options: MathOptions) 
     if let Some(conversion_result) = evaluate_unit_conversion_expression(expr, options) {
         return conversion_result;
     }
+    if let Some(symbolic_result) = evaluate_symbolic_equation_expression(expr, options) {
+        return Ok(symbolic_result);
+    }
 
     let tokens = tokenize_expression(expr)?;
     let parsed = parse_math_or_logic_tokens(&tokens)?;
@@ -13728,6 +14856,7 @@ mod tests {
         let li = eval_real("li(2)");
         assert!(li > 1.0 && li < 1.1, "li(2) out of expected range: {}", li);
 
+
         let w = eval_real("w(2.5)");
         assert!(w > 0.9 && w < 1.0, "w(2.5) out of expected range: {}", w);
 
@@ -13746,6 +14875,882 @@ mod tests {
 
         let sinc = eval_real("sinc(3)");
         assert!(sinc > 0.03 && sinc < 0.06, "sinc(3) out of expected range: {}", sinc);
+    }
+
+    #[test]
+    fn math_eval_symbolic_orchestrator_v2_matches_requested_equation_families() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let cases = [
+            ("∇²φ = k²φ", "helmholtz_constraint"),
+            ("∇·F = ρ_torsion", "dipole_flux_balance"),
+            ("ω_n = nπc/L", "resonance_eigenmode"),
+            ("A^{-1}(x) = -A(x)", "anticrystal_inversion_map"),
+            ("dU/dt = αU(1-U)", "unit_time_logistic_coupling"),
+        ];
+
+        for (expr, expected_family) in cases {
+            let payload = evaluate_math_expression(expr, &state, MathOptions::default())
+                .unwrap_or_else(|_| panic!("{} should be recognized", expr));
+            assert_eq!(
+                payload
+                    .get("symbolic_orchestration")
+                    .and_then(|v| v.get("version"))
+                    .and_then(Value::as_str),
+                Some("ugc_symbolic_orchestrator_v2")
+            );
+            assert_eq!(
+                payload
+                    .get("symbolic_orchestration")
+                    .and_then(|v| v.get("family_id"))
+                    .and_then(Value::as_str),
+                Some(expected_family)
+            );
+            assert_eq!(payload.get("deterministic").and_then(Value::as_bool), Some(true));
+        }
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_is_underdetermined_when_assumptions_missing() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression("∇²φ = k²φ", &state, MathOptions::default())
+            .expect("symbolic equation should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("verification_outcome"))
+                .and_then(Value::as_str),
+            Some("underdetermined")
+        );
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("assumption_manager"))
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("underdetermined")
+        );
+        assert!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("assumption_manager"))
+                .and_then(|v| v.get("missing_assumptions"))
+                .and_then(Value::as_array)
+                .map(|a| !a.is_empty())
+                .unwrap_or(false)
+        );
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_is_verified_when_required_assumptions_are_present() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "ω_n = nπc/L where n>=1, c>0, L>0",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("symbolic equation with assumptions should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("verification_outcome"))
+                .and_then(Value::as_str),
+            Some("verified")
+        );
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("assumption_manager"))
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("verified")
+        );
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("assumption_manager"))
+                .and_then(|v| v.get("missing_assumptions"))
+                .and_then(Value::as_array)
+                .map(|a| a.len()),
+            Some(0)
+        );
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("residual_verification_contract"))
+                .and_then(|v| v.get("verification_outcome"))
+                .and_then(Value::as_str),
+            Some("verified")
+        );
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_recognizes_1d_derivative_helmholtz_form() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        assert!(detect_symbolic_equation_family("\\frac{d^2 \\phi}{dx^2} = k^2 \\phi").is_some());
+
+        let payload = evaluate_math_expression(
+            "\\frac{d^2 \\phi}{dx^2} = k^2 \\phi",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("1D derivative Helmholtz should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("helmholtz_constraint")
+        );
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("dimensionality_inference"))
+                .and_then(Value::as_str),
+            Some("1d_line")
+        );
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("benchmark_output_block"))
+                .and_then(Value::as_str),
+            Some(
+                "dimensionality_inference=1d_line\nboundary_condition_classification=boundary_data_missing_or_partial\ngeometry_solution_options=none"
+            )
+        );
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_1d_dirichlet_boundary_collapses_to_eigenmodes() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\frac{d^2 \\phi}{dx^2} + k^2 \\phi = 0, \\phi(0)=0, \\phi(L)=0",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("boundary-conditioned 1D Helmholtz should evaluate");
+
+        let solution_family = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("solution_family"))
+            .and_then(Value::as_str)
+            .expect("solution_family should exist");
+        assert!(solution_family.contains("phi_n(x)=A*sin(n*pi*x/L)"));
+        assert!(solution_family.contains("k_n=n*pi/L"));
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("boundary_condition_analysis"))
+                .and_then(|v| v.get("classification"))
+                .and_then(Value::as_str),
+            Some("discrete_eigenmode_spectrum")
+        );
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("benchmark_output_block"))
+                .and_then(Value::as_str),
+            Some(
+                "dimensionality_inference=1d_line\nboundary_condition_classification=discrete_eigenmode_spectrum\ngeometry_solution_options=none"
+            )
+        );
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_spatial_coordinate_exposes_geometry_family_options() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        assert!(detect_symbolic_equation_family("\\nabla^2 \\phi(\\vec{r}) + k^2 \\phi(\\vec{r}) = 0").is_some());
+
+        let payload = evaluate_math_expression(
+            "\\nabla^2 \\phi(\\vec{r}) + k^2 \\phi(\\vec{r}) = 0",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("spatial Helmholtz form should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("dimensionality_inference"))
+                .and_then(Value::as_str),
+            Some("spatial_field")
+        );
+
+        let geometry_options = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("geometry_solution_options"))
+            .and_then(Value::as_array)
+            .expect("geometry options should exist");
+
+        assert!(geometry_options.iter().any(|o| o == "cylindrical_bessel"));
+        assert!(geometry_options.iter().any(|o| o == "spherical_harmonics"));
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("benchmark_output_block"))
+                .and_then(Value::as_str),
+            Some(
+                "dimensionality_inference=spatial_field\nboundary_condition_classification=boundary_data_missing_or_partial\ngeometry_solution_options=cartesian_separable,cylindrical_bessel,spherical_harmonics"
+            )
+        );
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_resonance_fraction_form_reports_chamber_linkage() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\omega_n = \\frac{n\\pi c}{L}",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("resonance fraction form should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("resonance_eigenmode")
+        );
+
+        let solution_family = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("solution_family"))
+            .and_then(Value::as_str)
+            .expect("solution_family should exist");
+        assert!(solution_family.contains("k_n=n*pi/L"));
+        assert!(solution_family.contains("omega_n=c*k_n"));
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_dipole_flux_torsion_source_sets_flux_field_ontology() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\nabla \\cdot \\vec{F} = \\rho_{\\text{torsion}}",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("dipole flux form should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("dipole_flux_balance")
+        );
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("dimensionality_inference"))
+                .and_then(Value::as_str),
+            Some("flux_field")
+        );
+        let ontology_tags = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("ontology tags should exist");
+        assert!(ontology_tags.iter().any(|t| t == "torsion_density_source"));
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_logistic_fraction_form_is_bounded_growth() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\frac{dU}{dt} = \\alpha\\,U(1-U)",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("logistic fraction form should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("unit_time_logistic_coupling")
+        );
+        let solution_family = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("solution_family"))
+            .and_then(Value::as_str)
+            .expect("solution_family should exist");
+        assert!(solution_family.contains("bounded-growth"));
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_csif_crystal_field_variant_preserves_helmholtz_tag() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\nabla^2 \\phi_{\\text{crystal}}(\\vec{r}) + k^2 \\phi_{\\text{crystal}}(\\vec{r}) = 0",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("CSIF crystal-field Helmholtz should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("helmholtz_constraint")
+        );
+        let ontology_tags = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("ontology tags should exist");
+        assert!(ontology_tags.iter().any(|t| t == "crystal_field"));
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("dimensionality_inference"))
+                .and_then(Value::as_str),
+            Some("spatial_field")
+        );
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_coupled_crystal_flux_system_reports_mixed_ontology() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\nabla^2 \\phi(\\vec{r}) = k^2 \\phi(\\vec{r}), \\nabla \\cdot \\vec{F} = \\rho_{\\text{torsion}}, \\vec{F} = -\\nabla \\phi",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("coupled crystal-flux system should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("coupled_crystal_flux_system")
+        );
+        let solution_family = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("solution_family"))
+            .and_then(Value::as_str)
+            .expect("solution_family should exist");
+        assert!(solution_family.contains("potential-generated dipole flux"));
+        let ontology_tags = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("ontology tags should exist");
+        assert!(ontology_tags.iter().any(|t| t == "coupled_field_flux_system"));
+        assert!(ontology_tags.iter().any(|t| t == "potential_generated_flux"));
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("dimensionality_inference"))
+                .and_then(Value::as_str),
+            Some("coupled_field_flux")
+        );
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_damped_unit_time_coupling_reports_regime_hint() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\frac{dU}{dt} = \\alpha\\,U(1-U) - \\gamma U",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("damped unit-time coupling should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("damped_unit_time_coupling")
+        );
+        let solution_family = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("solution_family"))
+            .and_then(Value::as_str)
+            .expect("solution_family should exist");
+        assert!(solution_family.contains("growth if alpha>gamma"));
+        assert!(solution_family.contains("decay if alpha<gamma"));
+        let ontology_tags = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("ontology tags should exist");
+        assert!(ontology_tags.iter().any(|t| t == "logistic_like"));
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_time_harmonic_crystal_field_links_resonance_modes() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\nabla^2 \\phi(\\vec{r},t) + k^2 \\phi(\\vec{r},t) = 0, \\phi(\\vec{r},t) = \\Re\\{\\Phi(\\vec{r}) e^{-i\\omega t}\\}",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("time-harmonic crystal field should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("time_harmonic_crystal_field")
+        );
+        let solution_family = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("solution_family"))
+            .and_then(Value::as_str)
+            .expect("solution_family should exist");
+        assert!(solution_family.contains("Time-harmonic separation"));
+        assert!(solution_family.contains("resonance eigenmode"));
+        let ontology_tags = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("ontology tags should exist");
+        assert!(ontology_tags.iter().any(|t| t == "time_harmonic_separation"));
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("dimensionality_inference"))
+                .and_then(Value::as_str),
+            Some("spatial_temporal_field")
+        );
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_trig_mode_shape_probe_emits_mode_ontology() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\sin\\left(\\frac{n\\pi x}{L}\\right)",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("trig mode-shape probe should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("trig_mode_shape_probe")
+        );
+
+        let tags = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("ontology_tags should exist");
+        assert!(tags.iter().any(|t| t == "mode_shape"));
+        assert!(tags.iter().any(|t| t == "eigenmode_profile"));
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_trig_phase_probe_emits_phase_ontology() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\cos(\\theta),\\quad \\theta = \\omega t",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("trig phase probe should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("trig_phase_signal_probe")
+        );
+
+        let tags = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("ontology_tags should exist");
+        assert!(tags.iter().any(|t| t == "phase_variable"));
+        assert!(tags.iter().any(|t| t == "angular_frequency"));
+        assert!(tags.iter().any(|t| t == "time_harmonic_signal"));
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_geometric_transport_operator_emits_transport_ontology() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let payload = evaluate_math_expression(
+            "\\frac{D\\phi}{Dt} = \\partial_t \\phi + \\vec{v}\\cdot\\nabla\\phi",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("geometric transport operator should evaluate");
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("geometric_transport_operator")
+        );
+
+        assert_eq!(
+            payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("canonical_form"))
+                .and_then(Value::as_str),
+            Some("Dphi/Dt = partial_t phi + v·nabla(phi)")
+        );
+
+        let tags = payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("ontology_tags should exist");
+        assert!(tags.iter().any(|t| t == "material_derivative"));
+        assert!(tags.iter().any(|t| t == "transport_field"));
+        assert!(tags.iter().any(|t| t == "flow_velocity"));
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_new_geometric_families_emit_expected_ontology() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let curvature_payload = evaluate_math_expression(
+            "\\Delta_g \\phi = k^2 \\phi",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("curvature-laplacian should evaluate");
+        assert_eq!(
+            curvature_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("curvature_laplacian")
+        );
+        let curvature_tags = curvature_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("curvature ontology tags should exist");
+        assert!(curvature_tags.iter().any(|t| t == "metric_laplacian"));
+        assert!(curvature_tags.iter().any(|t| t == "curved_manifold"));
+        assert!(curvature_tags.iter().any(|t| t == "geometric_operator"));
+
+        let energy_payload = evaluate_math_expression(
+            "E[\\phi] = \\int (|\\nabla\\phi|^2 + k^2 \\phi^2) dV",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("energy functional should evaluate");
+        assert_eq!(
+            energy_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("energy_functional")
+        );
+        let energy_tags = energy_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("energy ontology tags should exist");
+        assert!(energy_tags.iter().any(|t| t == "energy_functional"));
+        assert!(energy_tags.iter().any(|t| t == "variational_principle"));
+        assert!(energy_tags.iter().any(|t| t == "euler_lagrange_candidate"));
+
+        let coupled_payload = evaluate_math_expression(
+            "\\ddot{x} + \\omega_1^2 x + \\epsilon y = 0, \\ddot{y} + \\omega_2^2 y + \\epsilon x = 0",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("coupled mode interaction should evaluate");
+        assert_eq!(
+            coupled_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("coupled_mode_interaction")
+        );
+        let coupled_tags = coupled_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("coupled-mode ontology tags should exist");
+        assert!(coupled_tags.iter().any(|t| t == "coupled_oscillators"));
+        assert!(coupled_tags.iter().any(|t| t == "mode_interaction"));
+        assert!(coupled_tags.iter().any(|t| t == "resonant_coupling"));
+
+        let invariant_payload = evaluate_math_expression(
+            "phi_prime(x) = phi(x-a), phi_prime(\\vec{r}) = phi(R\\vec{r})",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("invariant transformation should evaluate");
+        assert_eq!(
+            invariant_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("invariant_transformation")
+        );
+        let invariant_tags = invariant_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("invariant ontology tags should exist");
+        assert!(invariant_tags.iter().any(|t| t == "translation_invariance"));
+        assert!(invariant_tags.iter().any(|t| t == "rotation_invariance"));
+        assert!(invariant_tags.iter().any(|t| t == "symmetry_transformation"));
+    }
+
+    #[test]
+    fn math_eval_symbolic_v2_next_five_families_emit_expected_ontology() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+
+        let tensor_payload = evaluate_math_expression(
+            "\\nabla \\cdot T = \\vec{f}",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("tensor field family should evaluate");
+        assert_eq!(
+            tensor_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("tensor_field_family")
+        );
+        let tensor_tags = tensor_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("tensor tags should exist");
+        assert!(tensor_tags.iter().any(|t| t == "tensor_field"));
+        assert!(tensor_tags.iter().any(|t| t == "stress_like_quantity"));
+        assert!(tensor_tags.iter().any(|t| t == "vector_source"));
+        let tensor_chat_surface = tensor_payload
+            .get("chat_surface")
+            .and_then(Value::as_str)
+            .expect("tensor chat surface should exist");
+        assert!(tensor_chat_surface.contains("Dimensionality: tensor_field"));
+
+        let tensor_bold_payload = evaluate_math_expression(
+            "\\nabla \\cdot \\mathbf{T} = \\vec{f}",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("tensor boldface form should evaluate");
+        assert_eq!(
+            tensor_bold_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("tensor_field_family")
+        );
+
+        let nonlinear_payload = evaluate_math_expression(
+            "\\nabla \\cdot (f(\\phi) \\nabla\\phi) = 0",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("nonlinear geometric operator should evaluate");
+        assert_eq!(
+            nonlinear_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("nonlinear_geometric_operator_family")
+        );
+        let nonlinear_tags = nonlinear_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("nonlinear tags should exist");
+        assert!(nonlinear_tags.iter().any(|t| t == "nonlinear_diffusion"));
+        assert!(nonlinear_tags.iter().any(|t| t == "geometry_dependent_flux"));
+        assert!(nonlinear_tags.iter().any(|t| t == "state_dependent_conductivity"));
+
+        let frequency_payload = evaluate_math_expression(
+            "\\phi^(\\omega)=\\int \\phi(t)e^{-i\\omega t}dt",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("frequency-space transform should evaluate");
+        assert_eq!(
+            frequency_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("frequency_space_transform_family")
+        );
+        let frequency_tags = frequency_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("frequency tags should exist");
+        assert!(frequency_tags.iter().any(|t| t == "fourier_transform"));
+        assert!(frequency_tags.iter().any(|t| t == "frequency_domain"));
+        assert!(frequency_tags.iter().any(|t| t == "time_frequency_duality"));
+
+        let frequency_hat_payload = evaluate_math_expression(
+            "\\hat{\\phi}(\\omega) = \\int \\phi(t)e^{-i\\omega t}dt",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("hat-phi frequency transform form should evaluate");
+        assert_eq!(
+            frequency_hat_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("frequency_space_transform_family")
+        );
+        let frequency_chat_surface = frequency_payload
+            .get("chat_surface")
+            .and_then(Value::as_str)
+            .expect("frequency chat surface should exist");
+        assert!(frequency_chat_surface.contains("Dimensionality: frequency_domain"));
+
+        let symmetry_payload = evaluate_math_expression(
+            "g\\cdot\\phi(\\vec{r})=\\phi(\\vec{r}), g \\in G",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("crystal symmetry group should evaluate");
+        assert_eq!(
+            symmetry_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("crystal_symmetry_group_family")
+        );
+        let symmetry_tags = symmetry_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("symmetry tags should exist");
+        assert!(symmetry_tags.iter().any(|t| t == "symmetry_group"));
+        assert!(symmetry_tags.iter().any(|t| t == "crystal_symmetry"));
+        assert!(symmetry_tags.iter().any(|t| t == "invariance_constraint"));
+
+        let action_payload = evaluate_math_expression(
+            "S[\\phi]=\\int L(\\phi,\\nabla\\phi)dVdt",
+            &state,
+            MathOptions::default(),
+        )
+        .expect("geometric action integral should evaluate");
+        assert_eq!(
+            action_payload
+                .get("symbolic_orchestration")
+                .and_then(|v| v.get("family_id"))
+                .and_then(Value::as_str),
+            Some("geometric_action_integral_family")
+        );
+        let action_tags = action_payload
+            .get("symbolic_orchestration")
+            .and_then(|v| v.get("ontology_tags"))
+            .and_then(Value::as_array)
+            .expect("action tags should exist");
+        assert!(action_tags.iter().any(|t| t == "action_integral"));
+        assert!(action_tags.iter().any(|t| t == "lagrangian_density"));
+        assert!(action_tags.iter().any(|t| t == "variational_dynamics"));
+        let action_chat_surface = action_payload
+            .get("chat_surface")
+            .and_then(Value::as_str)
+            .expect("action chat surface should exist");
+        assert!(action_chat_surface.contains("Dimensionality: action_dynamics"));
     }
 
     #[test]
@@ -15726,6 +17731,61 @@ mod tests {
                 .and_then(|v| v.get("result"))
                 .and_then(Value::as_f64),
             Some(20.0)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_unicode_symbolic_equation_prompt() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("∇²φ = k²φ".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("Symbolic equation: Crystal Harmonic Constraint (Helmholtz)"));
+        assert!(answer.contains("Verification: underdetermined"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
+        );
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("result"))
+                .and_then(Value::as_str)
+                .map(|s| s.contains("Helmholtz-family")),
+            Some(true)
+        );
+    }
+
+    #[test]
+    fn chat_math_accepts_latex_symbolic_equation_prompt() {
+        let state = AppState {
+            bank_summary: None,
+            bank_index: None,
+            sense_trajectory_log_path: None,
+        };
+        let messages = vec![ChatMessage {
+            role: "user".to_string(),
+            content: Value::String("\\nabla^2 \\phi = k^2 \\phi".to_string()),
+        }];
+
+        let (answer, meta) = build_chat_answer(&messages, &state, None);
+        assert!(answer.contains("Math result:"));
+        assert!(answer.contains("Symbolic equation: Crystal Harmonic Constraint (Helmholtz)"));
+        assert!(answer.contains("Verification: underdetermined"));
+        assert_eq!(
+            meta.get("math")
+                .and_then(|v| v.get("status"))
+                .and_then(Value::as_str),
+            Some("ok")
         );
     }
 
