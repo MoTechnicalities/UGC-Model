@@ -16,6 +16,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
+mod quantum_suite;
+
 const RWIF_SCHEMA_VERSION: &str = "RWIF_V2";
 const RWIF_EDGE_SCHEMA_VERSION: &str = "RWIF_EDGE_V2";
 const RWIF_EVENT_SCHEMA_VERSION: &str = "RWIF_EVENT_V2";
@@ -13743,6 +13745,9 @@ fn print_help(bin: &str) {
     println!("  {} math-eval [--mode algebraic|geometric] [--angle-unit radians|degrees] <expression>", bin);
     println!("  {} serve-openai [--host 127.0.0.1] [--port 8080] [--bank-path /path/to/bank.json]", bin);
     println!("  {} benchmark-determinism [--iterations 100]", bin);
+    println!("  {} grover-probe-native [--n-bits 20] [--iteration-policy optimal|sqrt] [--trials 3] [--seed 20260606] [--trace-every 64] [--stability-runs 3] [--marked-item N] [--pretty]", bin);
+    println!("  {} quantum-suite-native [--pretty]", bin);
+    println!("  {} quantum-suite-compare [--python python3] [--pretty]", bin);
 }
 
 fn percentile_ms(samples_ms: &[f64], pct: f64) -> f64 {
@@ -14153,6 +14158,212 @@ async fn main() {
                 serde_json::to_string_pretty(&payload)
                     .expect("json pretty print should succeed")
             );
+        }
+        "grover-probe-native" => {
+            let mut n_bits = 20usize;
+            let mut marked_item: Option<usize> = None;
+            let mut iteration_policy = String::from("optimal");
+            let mut trace_every = 64usize;
+            let mut stability_runs = 3usize;
+            let mut seed = 20260606u64;
+            let mut trials = 3usize;
+            let mut pretty = false;
+
+            let mut i = 2usize;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--n-bits" => {
+                        let Some(v) = args.get(i + 1) else {
+                            eprintln!("--n-bits requires a value");
+                            std::process::exit(1);
+                        };
+                        n_bits = match v.parse::<usize>() {
+                            Ok(v) => v,
+                            Err(_) => {
+                                eprintln!("invalid --n-bits value: {}", v);
+                                std::process::exit(1);
+                            }
+                        };
+                        i += 2;
+                    }
+                    "--marked-item" => {
+                        let Some(v) = args.get(i + 1) else {
+                            eprintln!("--marked-item requires a value");
+                            std::process::exit(1);
+                        };
+                        marked_item = match v.parse::<usize>() {
+                            Ok(v) => Some(v),
+                            Err(_) => {
+                                eprintln!("invalid --marked-item value: {}", v);
+                                std::process::exit(1);
+                            }
+                        };
+                        i += 2;
+                    }
+                    "--iteration-policy" => {
+                        let Some(v) = args.get(i + 1) else {
+                            eprintln!("--iteration-policy requires a value");
+                            std::process::exit(1);
+                        };
+                        iteration_policy = v.clone();
+                        i += 2;
+                    }
+                    "--trace-every" => {
+                        let Some(v) = args.get(i + 1) else {
+                            eprintln!("--trace-every requires a value");
+                            std::process::exit(1);
+                        };
+                        trace_every = match v.parse::<usize>() {
+                            Ok(v) => v.max(1),
+                            Err(_) => {
+                                eprintln!("invalid --trace-every value: {}", v);
+                                std::process::exit(1);
+                            }
+                        };
+                        i += 2;
+                    }
+                    "--stability-runs" => {
+                        let Some(v) = args.get(i + 1) else {
+                            eprintln!("--stability-runs requires a value");
+                            std::process::exit(1);
+                        };
+                        stability_runs = match v.parse::<usize>() {
+                            Ok(v) => v.max(1),
+                            Err(_) => {
+                                eprintln!("invalid --stability-runs value: {}", v);
+                                std::process::exit(1);
+                            }
+                        };
+                        i += 2;
+                    }
+                    "--seed" => {
+                        let Some(v) = args.get(i + 1) else {
+                            eprintln!("--seed requires a value");
+                            std::process::exit(1);
+                        };
+                        seed = match v.parse::<u64>() {
+                            Ok(v) => v,
+                            Err(_) => {
+                                eprintln!("invalid --seed value: {}", v);
+                                std::process::exit(1);
+                            }
+                        };
+                        i += 2;
+                    }
+                    "--trials" => {
+                        let Some(v) = args.get(i + 1) else {
+                            eprintln!("--trials requires a value");
+                            std::process::exit(1);
+                        };
+                        trials = match v.parse::<usize>() {
+                            Ok(v) => v.max(1),
+                            Err(_) => {
+                                eprintln!("invalid --trials value: {}", v);
+                                std::process::exit(1);
+                            }
+                        };
+                        i += 2;
+                    }
+                    "--pretty" => {
+                        pretty = true;
+                        i += 1;
+                    }
+                    other => {
+                        eprintln!("unknown grover-probe-native option: {}", other);
+                        std::process::exit(1);
+                    }
+                }
+            }
+
+            match quantum_suite::native_grover_probe_report(
+                n_bits,
+                marked_item,
+                &iteration_policy,
+                trace_every,
+                stability_runs,
+                seed,
+                trials,
+            ) {
+                Ok(payload) => {
+                    let output = if pretty {
+                        serde_json::to_string_pretty(&payload)
+                    } else {
+                        serde_json::to_string(&payload)
+                    }
+                    .expect("json serialization should succeed");
+                    println!("{}", output);
+                }
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "quantum-suite-native" => {
+            let mut pretty = false;
+            let mut i = 2usize;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--pretty" => {
+                        pretty = true;
+                        i += 1;
+                    }
+                    other => {
+                        eprintln!("unknown quantum-suite-native option: {}", other);
+                        std::process::exit(1);
+                    }
+                }
+            }
+
+            let payload = quantum_suite::native_suite_report();
+            let output = if pretty {
+                serde_json::to_string_pretty(&payload)
+            } else {
+                serde_json::to_string(&payload)
+            }
+            .expect("json serialization should succeed");
+            println!("{}", output);
+        }
+        "quantum-suite-compare" => {
+            let mut pretty = false;
+            let mut python = String::from("python3");
+            let mut i = 2usize;
+            while i < args.len() {
+                match args[i].as_str() {
+                    "--pretty" => {
+                        pretty = true;
+                        i += 1;
+                    }
+                    "--python" => {
+                        let Some(value) = args.get(i + 1) else {
+                            eprintln!("--python requires a value");
+                            std::process::exit(1);
+                        };
+                        python = value.clone();
+                        i += 2;
+                    }
+                    other => {
+                        eprintln!("unknown quantum-suite-compare option: {}", other);
+                        std::process::exit(1);
+                    }
+                }
+            }
+
+            match quantum_suite::compare_suite_report(&python) {
+                Ok(payload) => {
+                    let output = if pretty {
+                        serde_json::to_string_pretty(&payload)
+                    } else {
+                        serde_json::to_string(&payload)
+                    }
+                    .expect("json serialization should succeed");
+                    println!("{}", output);
+                }
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            }
         }
         "-h" | "--help" | "help" => {
             print_help(bin);

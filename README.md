@@ -2,6 +2,25 @@
 
 ![UGC-Model Hero](assets/UGC-Model_Image.png)
 
+## Research Summary
+
+Unified Geometric Cognition (UGC) is a native Rust, deterministic, auditable classical runtime for selected quantum-analog benchmarks and structured reasoning tasks. Rather than attempting universal tensor-product simulation, UGC uses closed-form geometric phase reductions to reproduce the expected outcomes of Deutsch, Deutsch-Jozsa, Grover, and Simon style probes on commodity CPU hardware.
+
+The project is useful because it is narrow, measurable, and reproducible:
+
+- It exposes a Rust CLI and API surface with stable JSON outputs and replayable audit traces.
+- It ships both Python and Rust benchmark paths so implementation overhead can be measured directly.
+- It records wall-clock runtime, iteration counts, query ratios, memory estimates, and torsion/phase stability as first-class metrics.
+- It treats scaling as an empirical boundary test, not as a claim of complexity-theory violation.
+
+Current evidence highlights:
+
+- Grover-style closed-form runs remain highly efficient on CPU up to n=50, with native Rust consistently outperforming the Python orchestration layer.
+- Deterministic SHA-256-style reproducibility is preserved across repeated runs.
+- The codebase is intentionally conservative: it does not claim physical qubit execution, arbitrary entangled-state simulation, or a universal quantum replacement.
+
+For the full benchmark narrative and command log, see [docs/demo/cli-demo.md](docs/demo/cli-demo.md).
+
 Unified Geometric Cognition (UGC) is a deterministic, auditable intelligence model
 built on CSIF (Crystal Structure Information Format) and RWIF (Resonant Wave
 Information Format).

@@ -1,6 +1,6 @@
 # UGC Quantum-Analog Suite Report
 
-Generated UTC: 2026-06-06T17:06:18Z
+Generated UTC: 2026-06-06T18:33:38Z
 
 ## Command
 
@@ -41,7 +41,7 @@ python3 scripts/run-ugc-quantum-suite.py --pretty
 | peak_memory_bytes_reduced_model | 16 |
 | peak_memory_bytes_full_state_equivalent | 16777216 |
 | max_torsion_radians | 3.14159265359 |
-| runtime_ms | 0.114452 |
+| runtime_ms | 0.120263 |
 | classical_avg_queries | 524288 |
 | grover_query_ratio_vs_avg | 0.00153351 |
 

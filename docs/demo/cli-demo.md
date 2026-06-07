@@ -343,3 +343,109 @@ Included probe groups:
 - Simon (`n=8`)
 
 This provides a single publish-ready entry point for the complete quantum-analog demonstration suite.
+
+## 12. Native Rust vs Python Comparison
+
+The Rust engine now exposes a direct quantum-suite path, and the comparison command measures it side by side with the existing Python probe pipeline.
+
+Command:
+
+```bash
+cargo run --quiet -- quantum-suite-compare --python python3 --pretty
+```
+
+Observed timing summary from the current run:
+
+- Native Rust suite runtime: `5.200772 ms`
+- Python suite runtime: `138.046566 ms`
+- Python-over-Rust suite speedup ratio: `26.543476x`
+
+Per-probe wall-clock timings:
+
+- Deutsch: Rust `0.311415 ms`, Python `18.781237 ms`
+- Deutsch-Jozsa (n=3,4): Rust `0.065037 ms`, Python `28.551951 ms`
+- Grover (n=20 optimal): Rust `0.071686 ms`, Python `23.685902 ms`
+- Simon (n=8): Rust `0.710856 ms`, Python `21.352255 ms`
+
+This is the direct command path to cite when comparing the native Rust engine against the Python-based probe runner.
+
+## 13. Boundary Test: Grover Scaling Sweep
+
+To push against a real complexity-boundary style question, we added a scaling runner that sweeps Grover across increasing `n` and records measured wall-clock runtime, query ratios, and brute-force baseline estimates.
+
+Command:
+
+```bash
+python3 scripts/run-ugc-grover-scaling.py --n-min 10 --n-max 50 --step 5 --trials 3 --pretty
+```
+
+Generated artifacts:
+
+- `docs/demo/grover-scaling-report.json`
+- `docs/demo/grover-scaling-report.md`
+
+Observed summary from current run:
+
+- Executed `n` values: `7`
+- Executed `n` values: `9`
+- Skipped `n` values: `0`
+- Measured runtime log2 slope per bit: `0.219721`
+- Scaling interpretation: `between flat and sqrt-like exponential (close to O(2^(n/2)))`
+
+Per-`n` snapshot:
+
+- `n=10`: wall runtime `19.487173 ms`, iterations `25`
+- `n=15`: wall runtime `19.525721 ms`, iterations `142`
+- `n=20`: wall runtime `19.237114 ms`, iterations `804`
+- `n=25`: wall runtime `24.036289 ms`, iterations `4549`
+- `n=30`: wall runtime `28.998219 ms`, iterations `25735`
+- `n=35`: wall runtime `76.839232 ms`, iterations `145584`
+- `n=40`: wall runtime `343.246477 ms`, iterations `823549`
+- `n=45`: wall runtime `1851.637231 ms`, iterations `4658700`
+- `n=50`: wall runtime `10370.806551 ms`, iterations `26353589`
+
+Interpretation note:
+
+- This does not claim violation of unstructured-search lower bounds.
+- It is a measured software boundary experiment on the current closed-form Grover analog implementation.
+
+## 14. Python vs Rust Boundary Curves (CSV + Log-Log Fit)
+
+To obtain direct implementation curves for publication figures, we added a Rust-native scaling runner that mirrors the Python sweep and emits side-by-side artifacts.
+
+Command:
+
+```bash
+python3 scripts/run-ugc-grover-scaling-rust.py \
+  --n-min 10 \
+  --n-max 50 \
+  --step 5 \
+  --trials 3 \
+  --rust-runner binary \
+  --rust-binary target/debug/csif_agent_v2_rust \
+  --pretty
+```
+
+Generated artifacts:
+
+- `docs/demo/grover-scaling-rust-compare.json`
+- `docs/demo/grover-scaling-rust-compare.md`
+- `docs/demo/grover-scaling-rust-compare.csv`
+- `docs/demo/grover-scaling-rust-compare-loglog.svg`
+
+Observed fit summary:
+
+- Python log-log slope: `0.216737` (`R^2=0.806072`)
+- Rust log-log slope: `0.204773` (`R^2=0.815429`)
+
+Per-`n` Python vs Rust wall-clock snapshot:
+
+- `n=10`: Python `19.724010 ms`, Rust `2.281876 ms`, ratio `8.643769x`
+- `n=15`: Python `21.308783 ms`, Rust `3.241313 ms`, ratio `6.574121x`
+- `n=20`: Python `23.207542 ms`, Rust `3.399238 ms`, ratio `6.827278x`
+- `n=25`: Python `25.646479 ms`, Rust `3.819650 ms`, ratio `6.714353x`
+- `n=30`: Python `30.490447 ms`, Rust `4.803052 ms`, ratio `6.348140x`
+- `n=35`: Python `78.769931 ms`, Rust `9.690201 ms`, ratio `8.128823x`
+- `n=40`: Python `356.370255 ms`, Rust `36.777693 ms`, ratio `9.689848x`
+- `n=45`: Python `1857.096375 ms`, Rust `191.649942 ms`, ratio `9.690044x`
+- `n=50`: Python `10426.428684 ms`, Rust `1082.652550 ms`, ratio `9.630448x`

@@ -140,8 +140,8 @@ def main() -> None:
     parser.add_argument("--pretty", action="store_true", help="Pretty-print JSON output")
     args = parser.parse_args()
 
-    if args.n_bits < 1 or args.n_bits > 28:
-        raise SystemExit("n_bits must be in [1, 28]")
+    if args.n_bits < 1 or args.n_bits > 50:
+        raise SystemExit("n_bits must be in [1, 50]")
     n_items = 1 << args.n_bits
 
     rng = random.Random(args.seed)

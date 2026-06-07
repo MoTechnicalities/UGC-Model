@@ -367,11 +367,11 @@
     "batches": [
       {
         "aggregate_metrics": {
-          "avg_runtime_ms": 0.006358,
+          "avg_runtime_ms": 0.005954,
           "estimated_peak_memory_bytes": 384,
           "max_torsion_radians": 3.14159265359,
           "total_phase_operations": 800,
-          "total_runtime_ms": 0.050861
+          "total_runtime_ms": 0.047632
         },
         "n_bits": 3,
         "oracle_count": 8,
@@ -387,7 +387,7 @@
               "estimated_peak_memory_bytes": 384,
               "max_torsion_radians": 0.0,
               "phase_operations": 96,
-              "runtime_ms": 0.013221,
+              "runtime_ms": 0.011894,
               "state_dimension": 8
             },
             "oracle_id": "n3_constant_0",
@@ -404,7 +404,7 @@
               "estimated_peak_memory_bytes": 384,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 104,
-              "runtime_ms": 0.007719,
+              "runtime_ms": 0.007118,
               "state_dimension": 8
             },
             "oracle_id": "n3_constant_1",
@@ -421,7 +421,7 @@
               "estimated_peak_memory_bytes": 384,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 100,
-              "runtime_ms": 0.006892,
+              "runtime_ms": 0.006515,
               "state_dimension": 8
             },
             "oracle_id": "n3_balanced_a001_b0",
@@ -438,7 +438,7 @@
               "estimated_peak_memory_bytes": 384,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 100,
-              "runtime_ms": 0.004957,
+              "runtime_ms": 0.004822,
               "state_dimension": 8
             },
             "oracle_id": "n3_balanced_a010_b0",
@@ -455,7 +455,7 @@
               "estimated_peak_memory_bytes": 384,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 100,
-              "runtime_ms": 0.004742,
+              "runtime_ms": 0.004461,
               "state_dimension": 8
             },
             "oracle_id": "n3_balanced_a011_b0",
@@ -472,7 +472,7 @@
               "estimated_peak_memory_bytes": 384,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 100,
-              "runtime_ms": 0.004658,
+              "runtime_ms": 0.004348,
               "state_dimension": 8
             },
             "oracle_id": "n3_balanced_a100_b0",
@@ -489,7 +489,7 @@
               "estimated_peak_memory_bytes": 384,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 100,
-              "runtime_ms": 0.004365,
+              "runtime_ms": 0.004294,
               "state_dimension": 8
             },
             "oracle_id": "n3_balanced_a101_b0",
@@ -506,7 +506,7 @@
               "estimated_peak_memory_bytes": 384,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 100,
-              "runtime_ms": 0.004307,
+              "runtime_ms": 0.00418,
               "state_dimension": 8
             },
             "oracle_id": "n3_balanced_a110_b0",
@@ -522,11 +522,11 @@
       },
       {
         "aggregate_metrics": {
-          "avg_runtime_ms": 0.008991,
+          "avg_runtime_ms": 0.009002,
           "estimated_peak_memory_bytes": 768,
           "max_torsion_radians": 3.14159265359,
           "total_phase_operations": 4224,
-          "total_runtime_ms": 0.143852
+          "total_runtime_ms": 0.144031
         },
         "n_bits": 4,
         "oracle_count": 16,
@@ -542,7 +542,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 0.0,
               "phase_operations": 256,
-              "runtime_ms": 0.009305,
+              "runtime_ms": 0.009216,
               "state_dimension": 16
             },
             "oracle_id": "n4_constant_0",
@@ -559,7 +559,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 272,
-              "runtime_ms": 0.01025,
+              "runtime_ms": 0.009681,
               "state_dimension": 16
             },
             "oracle_id": "n4_constant_1",
@@ -576,7 +576,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.009613,
+              "runtime_ms": 0.009371,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a0001_b0",
@@ -593,7 +593,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008853,
+              "runtime_ms": 0.009014,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a0010_b0",
@@ -610,7 +610,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008841,
+              "runtime_ms": 0.009196,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a0011_b0",
@@ -627,7 +627,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.009211,
+              "runtime_ms": 0.008832,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a0100_b0",
@@ -644,7 +644,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.00863,
+              "runtime_ms": 0.008799,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a0101_b0",
@@ -661,7 +661,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008693,
+              "runtime_ms": 0.008815,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a0110_b0",
@@ -678,7 +678,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.009231,
+              "runtime_ms": 0.008808,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a0111_b0",
@@ -695,7 +695,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008652,
+              "runtime_ms": 0.008799,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a1000_b0",
@@ -712,7 +712,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008893,
+              "runtime_ms": 0.009159,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a1001_b0",
@@ -729,7 +729,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008797,
+              "runtime_ms": 0.008907,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a1010_b0",
@@ -746,7 +746,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008898,
+              "runtime_ms": 0.008801,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a1011_b0",
@@ -763,7 +763,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008713,
+              "runtime_ms": 0.008919,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a1100_b0",
@@ -780,7 +780,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.0087,
+              "runtime_ms": 0.008835,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a1101_b0",
@@ -797,7 +797,7 @@
               "estimated_peak_memory_bytes": 768,
               "max_torsion_radians": 3.14159265359,
               "phase_operations": 264,
-              "runtime_ms": 0.008572,
+              "runtime_ms": 0.008879,
               "state_dimension": 16
             },
             "oracle_id": "n4_balanced_a1110_b0",
@@ -820,7 +820,7 @@
     "object": "ugc.quantum_analog.deutsch_jozsa_probe",
     "schema_version": "ugc_deutsch_jozsa_probe_v1"
   },
-  "generated_utc": "2026-06-06T17:06:18Z",
+  "generated_utc": "2026-06-06T18:33:38Z",
   "grover": {
     "optimal": {
       "deterministic": true,
@@ -849,7 +849,7 @@
             "peak_memory_bytes_full_state_equivalent": 16777216,
             "peak_memory_bytes_reduced_model": 16,
             "phase_operations_equivalent": 843055908,
-            "runtime_ms": 0.114452
+            "runtime_ms": 0.120263
           },
           "n_bits": 20,
           "pi_over_4_sqrt_n_reference": 804,
@@ -942,7 +942,7 @@
             "peak_memory_bytes_full_state_equivalent": 16777216,
             "peak_memory_bytes_reduced_model": 16,
             "phase_operations_equivalent": 843055908,
-            "runtime_ms": 0.106596
+            "runtime_ms": 0.102419
           },
           "n_bits": 20,
           "pi_over_4_sqrt_n_reference": 804,
@@ -1035,7 +1035,7 @@
             "peak_memory_bytes_full_state_equivalent": 16777216,
             "peak_memory_bytes_reduced_model": 16,
             "phase_operations_equivalent": 843055908,
-            "runtime_ms": 0.099471
+            "runtime_ms": 0.099771
           },
           "n_bits": 20,
           "pi_over_4_sqrt_n_reference": 804,
@@ -1142,7 +1142,7 @@
             "peak_memory_bytes_full_state_equivalent": 16777216,
             "peak_memory_bytes_reduced_model": 16,
             "phase_operations_equivalent": 1073742848,
-            "runtime_ms": 0.13094
+            "runtime_ms": 0.134607
           },
           "n_bits": 20,
           "pi_over_4_sqrt_n_reference": 804,
@@ -1217,7 +1217,7 @@
           "max_torsion_radians": 3.14159265359,
           "peak_memory_bytes": 120,
           "phase_operations_equivalent": 1792,
-          "runtime_ms": 0.047644
+          "runtime_ms": 0.048548
         },
         "n_bits": 8,
         "query_ratio_vs_classical_worst": 0.02734375,
@@ -1292,7 +1292,7 @@
           "max_torsion_radians": 3.14159265359,
           "peak_memory_bytes": 120,
           "phase_operations_equivalent": 1792,
-          "runtime_ms": 0.024907
+          "runtime_ms": 0.025072
         },
         "n_bits": 8,
         "query_ratio_vs_classical_worst": 0.02734375,
@@ -1367,7 +1367,7 @@
           "max_torsion_radians": 3.14159265359,
           "peak_memory_bytes": 120,
           "phase_operations_equivalent": 1792,
-          "runtime_ms": 0.055787
+          "runtime_ms": 0.053107
         },
         "n_bits": 8,
         "query_ratio_vs_classical_worst": 0.02734375,
