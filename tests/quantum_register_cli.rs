@@ -87,6 +87,11 @@ fn quantum_register_scaffold_emits_contract_payload() {
             .and_then(Value::as_f64)
             .is_some()
     );
+    assert_eq!(rwif_event.get("blade_grade"), Some(&Value::from(2)));
+    assert_eq!(
+        rwif_event.get("grade_classification"),
+        Some(&Value::String("bivector".to_string()))
+    );
 }
 
 #[test]
