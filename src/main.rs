@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 mod quantum_suite;
+mod quantum;
 
 const RWIF_SCHEMA_VERSION: &str = "RWIF_V2";
 const RWIF_EDGE_SCHEMA_VERSION: &str = "RWIF_EDGE_V2";
@@ -13748,6 +13749,7 @@ fn print_help(bin: &str) {
     println!("  {} grover-probe-native [--n-bits 20] [--iteration-policy optimal|sqrt] [--trials 3] [--seed 20260606] [--trace-every 64] [--stability-runs 3] [--marked-item N] [--pretty]", bin);
     println!("  {} quantum-suite-native [--pretty]", bin);
     println!("  {} quantum-suite-compare [--python python3] [--pretty]", bin);
+    println!("  {} quantum-register-scaffold [--n-qubits 4] [--pretty]", bin);
 }
 
 fn percentile_ms(samples_ms: &[f64], pct: f64) -> f64 {
@@ -13787,8 +13789,38 @@ fn canonicalize_json_value(value: &Value) -> Value {
     }
 }
 
+fn strip_volatile_hash_fields(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut cleaned = serde_json::Map::new();
+            for (k, v) in map {
+                // Exclude fields that can vary by wall-clock/process context.
+                let drop_key = matches!(
+                    k.as_str(),
+                    "time_crystal"
+                        | "randomness_appearance"
+                        | "timestamp"
+                        | "timestamp_unix_ms"
+                        | "generated_at_utc"
+                        | "run_started_utc"
+                        | "run_finished_utc"
+                        | "t_ns"
+                        | "coordinate_source"
+                );
+                if !drop_key {
+                    cleaned.insert(k.clone(), strip_volatile_hash_fields(v));
+                }
+            }
+            Value::Object(cleaned)
+        }
+        Value::Array(arr) => Value::Array(arr.iter().map(strip_volatile_hash_fields).collect::<Vec<_>>()),
+        _ => value.clone(),
+    }
+}
+
 fn value_hash(v: &Value) -> u64 {
-    let canonical = canonicalize_json_value(v);
+    let stable_view = strip_volatile_hash_fields(v);
+    let canonical = canonicalize_json_value(&stable_view);
     let serialized = serde_json::to_string(&canonical).unwrap_or_else(|_| "{}".to_string());
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     serialized.hash(&mut hasher);
@@ -14352,6 +14384,31 @@ async fn main() {
             match quantum_suite::compare_suite_report(&python) {
                 Ok(payload) => {
                     let output = if pretty {
+                        serde_json::to_string_pretty(&payload)
+                    } else {
+                        serde_json::to_string(&payload)
+                    }
+                    .expect("json serialization should succeed");
+                    println!("{}", output);
+                }
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "quantum-register-scaffold" => {
+            let parsed = match quantum::cli::parse_quantum_register_scaffold_args(&args[2..]) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            };
+
+            match quantum::register::scaffold_report(parsed.n_qubits) {
+                Ok(payload) => {
+                    let output = if parsed.pretty {
                         serde_json::to_string_pretty(&payload)
                     } else {
                         serde_json::to_string(&payload)
