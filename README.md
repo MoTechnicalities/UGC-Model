@@ -15,9 +15,15 @@ The project is useful because it is narrow, measurable, and reproducible:
 
 Current evidence highlights:
 
-- Grover-style closed-form runs remain highly efficient on CPU up to n=50, with native Rust consistently outperforming the Python orchestration layer.
+- Grover-style closed-form runs remain highly efficient on CPU up to n=50, with native Rust consistently outperforming the Python orchestration layer (typically around 5x-30x depending on probe and measurement path).
 - Deterministic SHA-256-style reproducibility is preserved across repeated runs.
 - The codebase is intentionally conservative: it does not claim physical qubit execution, arbitrary entangled-state simulation, or a universal quantum replacement.
+
+### Limitations
+
+- UGC does not implement universal quantum simulation.
+- UGC does not claim complexity-theory violations.
+- Oracle behavior in the current probe suite is closed-form and deterministic, not hardware qubit execution.
 
 For the full benchmark narrative and command log, see [docs/demo/cli-demo.md](docs/demo/cli-demo.md).
 
