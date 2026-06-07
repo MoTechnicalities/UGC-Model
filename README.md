@@ -2,6 +2,10 @@
 
 ![UGC-Model Hero](assets/UGC-Model_Image.png)
 
+![Deterministic](https://img.shields.io/badge/deterministic-passing-brightgreen)
+![Reproducible](https://img.shields.io/badge/reproducible-passing-brightgreen)
+![Auditable](https://img.shields.io/badge/auditable-passing-brightgreen)
+
 ## Research Summary
 
 Unified Geometric Cognition (UGC) is a native Rust, deterministic, auditable classical runtime for selected quantum-analog benchmarks and structured reasoning tasks. Rather than attempting universal tensor-product simulation, UGC uses closed-form geometric phase reductions to reproduce the expected outcomes of Deutsch, Deutsch-Jozsa, Grover, and Simon style probes on commodity CPU hardware.
