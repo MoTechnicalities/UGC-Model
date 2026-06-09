@@ -21,6 +21,8 @@ Current evidence highlights:
 
 - Grover-style closed-form runs remain highly efficient on CPU up to n=50, with native Rust consistently outperforming the Python orchestration layer (typically around 5x-30x depending on probe and measurement path).
 - Deterministic SHA-256-style reproducibility is preserved across repeated runs.
+- Bernstein-Vazirani now ships in two explicit modes: a structural mode for deterministic oracle-inspection verification, and a black-box mode for measurement-only recovery under finite-shot constraints.
+- The black-box BV path includes a reality calibration layer that reports per-bit confidence, whole-string confidence, and estimated shot budgets for a target confidence level.
 - The codebase is intentionally conservative: it does not claim physical qubit execution, arbitrary entangled-state simulation, or a universal quantum replacement.
 
 ### Limitations
@@ -28,6 +30,32 @@ Current evidence highlights:
 - UGC does not implement universal quantum simulation.
 - UGC does not claim complexity-theory violations.
 - Oracle behavior in the current probe suite is closed-form and deterministic, not hardware qubit execution.
+
+## As-If-Real Quantum Mode
+
+The quantum register engine includes a public "as-if-real" Bernstein-Vazirani path intended for experimental design rather than speedup claims.
+
+### Structural BV
+
+- Builds the BV oracle from the hidden string as explicit gate structure.
+- Recovers the hidden string deterministically by reading the oracle gates.
+- Emits RWIF-augmented traces with oracle-call and recovered-string fields for auditability.
+
+### Black-Box BV
+
+- Applies an opaque oracle to the register without exposing hidden-bit introspection APIs.
+- Recovers the hidden string from seeded shot-based measurements only.
+- Preserves deterministic replay at the envelope level by using stable seeds and stable JSON hashing.
+
+### Reality Calibration
+
+Black-box BV now emits a calibration summary with:
+
+- Per-bit confidence estimates from finite-shot majority outcomes.
+- Whole-string confidence as an aggregate confidence estimate over all recovered bits.
+- Minimum-shot estimates for a target confidence level using a conservative Hoeffding-style majority bound.
+
+This mode is designed to emulate the experimental constraints of noisy, finite-shot quantum workflows on classical hardware while remaining explicit about what it is not: it is not a claim of physical qubit execution or quantum speedup.
 
 For the full benchmark narrative and command log, see [docs/demo/cli-demo.md](docs/demo/cli-demo.md).
 
