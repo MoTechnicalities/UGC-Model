@@ -1,15 +1,68 @@
 use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::collections::BTreeMap;
 
 const RWIF_EVENT_SCHEMA_VERSION: &str = "RWIF_EVENT_V2";
 const RWIF_EDGE_SCHEMA_VERSION: &str = "RWIF_EDGE_V2";
 const MAX_SCAFFOLD_QUBITS: u8 = 10;
+const BLACK_BOX_BV_SHOTS: u32 = 512;
+const REALITY_CALIBRATION_TARGET_CONFIDENCE: f64 = 0.95;
+const BLOCK_SPARSE_BLOCK_SIZE: usize = 256;
+const BLOCK_SPARSE_DENSE_FALLBACK_DENSITY_THRESHOLD: f64 = 0.12;
+const BLOCK_SIZE_TUNING_CANDIDATES: [usize; 5] = [64, 128, 256, 512, 1024];
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MultiVectorND {
     pub dimension: usize,
     pub components: Vec<f64>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+struct BlockSparseState {
+    dimension: usize,
+    block_size: usize,
+    blocks: BTreeMap<usize, Vec<(usize, f64)>>,
+}
+
+impl BlockSparseState {
+    fn from_dense(components: &[f64], block_size: usize) -> Self {
+        let mut blocks = BTreeMap::new();
+        for (block_idx, chunk) in components.chunks(block_size).enumerate() {
+            let mut entries = Vec::new();
+            for (offset, value) in chunk.iter().enumerate() {
+                if *value != 0.0 {
+                    entries.push((offset, *value));
+                }
+            }
+            if !entries.is_empty() {
+                blocks.insert(block_idx, entries);
+            }
+        }
+        Self {
+            dimension: components.len(),
+            block_size,
+            blocks,
+        }
+    }
+
+    fn to_dense_multivector(&self) -> MultiVectorND {
+        let mut components = vec![0.0; self.dimension];
+        for (block_idx, block_values) in &self.blocks {
+            let base = block_idx * self.block_size;
+            for (offset, value) in block_values {
+                let idx = base + offset;
+                if idx >= self.dimension {
+                    break;
+                }
+                components[idx] = *value;
+            }
+        }
+        MultiVectorND {
+            dimension: self.dimension,
+            components,
+        }
+    }
 }
 
 impl MultiVectorND {
@@ -161,6 +214,7 @@ pub struct RwifGateTrace {
     pub coupling_trivector_amplitude_after: f64,
     pub coupling_transfer_scalar: f64,
     pub normalized_coupling_intensity: f64,
+    pub geometric_convergence_metric: f64,
     pub entanglement_coupling_active: bool,
     pub torsion_scalar: f64,
     pub phase_alignment_index: f64,
@@ -200,6 +254,7 @@ impl RwifGateTrace {
             "coupling_trivector_amplitude_after": self.coupling_trivector_amplitude_after,
             "coupling_transfer_scalar": self.coupling_transfer_scalar,
             "normalized_coupling_intensity": self.normalized_coupling_intensity,
+            "geometric_convergence_metric": self.geometric_convergence_metric,
             "entanglement_coupling_active": self.entanglement_coupling_active,
         })
     }
@@ -232,12 +287,100 @@ pub struct MeasurementOutcome {
     pub projection_basis: String,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ShotMeasurementSummary {
+    pub qubit: usize,
+    pub shots: u32,
+    pub ones: u32,
+    pub zeros: u32,
+    pub one_probability: f64,
+    pub inferred_bit: u8,
+    pub sampler: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BitConfidenceEstimate {
+    pub qubit: usize,
+    pub inferred_bit: u8,
+    pub estimated_confidence: f64,
+    pub minimum_shots_for_target_confidence: Option<u32>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct RealityCalibrationSummary {
+    pub confidence_model: String,
+    pub target_confidence_level: f64,
+    pub per_bit: Vec<BitConfidenceEstimate>,
+    pub whole_string_confidence: f64,
+    pub minimum_shots_for_target_confidence: Option<u32>,
+}
+
 pub trait RegisterGateApplier {
     fn apply_gate(&mut self, gate: GateSpec) -> Result<TorsionEvent, String>;
 }
 
 pub trait DeterministicProjector {
     fn measure_qubit(&self, qubit: usize) -> Result<MeasurementOutcome, String>;
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+pub enum BvExecutionMode {
+    Structural,
+    BlackBox,
+}
+
+#[derive(Clone, Debug)]
+pub struct OpaqueBvOracle {
+    hidden_bits: Vec<u8>,
+    applied_gate_count: usize,
+    invocation_count: usize,
+}
+
+impl OpaqueBvOracle {
+    pub fn new(hidden: &str) -> Result<Self, String> {
+        Ok(Self {
+            hidden_bits: parse_hidden_bit_string(hidden)?,
+            applied_gate_count: 0,
+            invocation_count: 0,
+        })
+    }
+
+    pub fn execution_mode(&self) -> BvExecutionMode {
+        BvExecutionMode::BlackBox
+    }
+
+    pub fn query_len(&self) -> usize {
+        self.hidden_bits.len()
+    }
+
+    pub fn apply_to_register(&mut self, register: &mut QuantumRegister) -> Result<usize, String> {
+        let ancilla = self.hidden_bits.len();
+        let mut applied = 0usize;
+        self.invocation_count += 1;
+
+        for (idx, bit) in self.hidden_bits.iter().enumerate() {
+            if *bit == 1 {
+                register.apply_gate(GateSpec {
+                    gate_id: format!("bv_black_box_cnot_q{}", idx),
+                    kind: GateKind::Cnot,
+                    targets: vec![idx, ancilla],
+                    angle_radians: Some(std::f64::consts::FRAC_PI_2),
+                })?;
+                applied += 1;
+            }
+        }
+
+        self.applied_gate_count += applied;
+        Ok(applied)
+    }
+
+    pub fn applied_gate_count(&self) -> usize {
+        self.applied_gate_count
+    }
+
+    pub fn oracle_call_count(&self) -> usize {
+        self.invocation_count
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -302,6 +445,117 @@ impl QuantumRegister {
             "semantic_grade_classification": "blade_grade_count_ones_v1"
         })
     }
+
+    pub fn apply_optimization_step(&mut self, evolution_fraction: f64) -> Result<TorsionEvent, String> {
+        let fraction = evolution_fraction.clamp(0.0, 1.0);
+        let local_kind = if fraction < 0.5 {
+            GateKind::Hadamard
+        } else {
+            GateKind::Phase
+        };
+
+        let local_gate = GateSpec {
+            gate_id: format!("opt_local_{}", self.tick + 1),
+            kind: local_kind,
+            targets: vec![0],
+            angle_radians: Some((1.0 - fraction) * std::f64::consts::FRAC_PI_2),
+        };
+        let local_rotor = local_gate.to_rotor();
+
+        let local_state = evolve_gate_state(&self.state, &local_rotor, self.state.dimension)?;
+
+        let final_state = if self.n_qubits > 1 {
+            let coupling_gate = GateSpec {
+                gate_id: format!("opt_coupling_{}", self.tick + 1),
+                kind: GateKind::Cnot,
+                targets: vec![0, 1],
+                angle_radians: Some(fraction * std::f64::consts::FRAC_PI_2),
+            };
+            let coupling_rotor = coupling_gate.to_rotor();
+            let coupling_state = evolve_gate_state(&local_state, &coupling_rotor, self.state.dimension)?;
+            let mut projected_coupling_state = coupling_state.clone();
+            projected_coupling_state.components[0] = 0.0;
+
+            let mut mixed = blend_states(&local_state, &projected_coupling_state, 1.0 - fraction, fraction);
+            if let Some(coupling_mask) = coupling_rotor.coupling_blade_mask {
+                if coupling_mask < mixed.dimension && fraction >= 1.0 {
+                    mixed.components[0] = 0.0;
+                    mixed.components[coupling_mask] = mixed.components[coupling_mask].abs().max(1e-12);
+                }
+            }
+            mixed
+        } else {
+            local_state.clone()
+        };
+
+        let local_before = blade_component_magnitude(&self.state, local_rotor.blade_mask);
+        let local_after = blade_component_magnitude(&final_state, local_rotor.blade_mask);
+        let coupling_before = blade_component_magnitude(&self.state, local_rotor.coupling_blade_mask);
+        let coupling_after = blade_component_magnitude(&final_state, local_rotor.coupling_blade_mask);
+        let non_scalar_magnitude = final_state.non_scalar_magnitude();
+        let coupling_transfer_scalar = fraction * non_scalar_magnitude;
+        let normalized_coupling_intensity = if non_scalar_magnitude <= 1e-12 {
+            0.0
+        } else {
+            (coupling_transfer_scalar / non_scalar_magnitude).clamp(0.0, 1.0)
+        };
+        let geometric_convergence_metric = geometric_convergence_metric(&final_state, local_rotor.coupling_blade_mask);
+        let entanglement_coupling_active = local_rotor.coupling_blade_mask.is_some() && coupling_after > 0.0;
+
+        let prev_norm = self.state.norm();
+        let new_norm = final_state.norm();
+        let denom = prev_norm * new_norm;
+        let alignment = if denom <= f64::EPSILON {
+            1.0
+        } else {
+            (self.state.dot(&final_state) / denom).clamp(-1.0, 1.0)
+        };
+        let torsion_delta = alignment.acos();
+        let phase_alignment_index = ((alignment + 1.0) * 0.5).clamp(0.0, 1.0);
+
+        self.tick += 1;
+        self.global_torsion += torsion_delta;
+        self.state = final_state;
+
+        let event = TorsionEvent {
+            tick: self.tick,
+            gate_id: format!("optimization_step_{:.3}", fraction),
+            torsion_delta,
+            cumulative_torsion: self.global_torsion,
+            torsion_scalar: torsion_delta,
+            phase_alignment_index,
+        };
+
+        let rwif = RwifGateTrace {
+            schema_version: "rwif_gate_trace_v1".to_string(),
+            tick: self.tick,
+            gate_id: event.gate_id.clone(),
+            rotor_id: format!("rotor:optimization_step_{:.3}", fraction),
+            plane_label: local_rotor.plane_label,
+            blade_mask: local_rotor.blade_mask,
+            blade_label: local_rotor.blade_label,
+            blade_grade: local_rotor.blade_grade,
+            grade_classification: local_rotor.grade_classification,
+            coupling_blade_mask: local_rotor.coupling_blade_mask,
+            coupling_manifold: local_rotor.coupling_manifold,
+            coupling_blade_grade: local_rotor.coupling_blade_grade,
+            coupling_grade_classification: local_rotor.coupling_grade_classification,
+            local_bivector_amplitude_before: local_before,
+            local_bivector_amplitude_after: local_after,
+            coupling_trivector_amplitude_before: coupling_before,
+            coupling_trivector_amplitude_after: coupling_after,
+            coupling_transfer_scalar,
+            normalized_coupling_intensity,
+            geometric_convergence_metric,
+            entanglement_coupling_active,
+            torsion_scalar: event.torsion_scalar,
+            phase_alignment_index: event.phase_alignment_index,
+        };
+
+        self.rwif_trace.push(rwif);
+        self.trace.push(event.clone());
+        Ok(event)
+    }
 }
 
 impl RegisterGateApplier for QuantumRegister {
@@ -316,13 +570,7 @@ impl RegisterGateApplier for QuantumRegister {
         let rotor = gate.to_rotor();
 
         let prev_state = self.state.clone();
-        let evolved = if matches!(gate.kind, GateKind::NoOp) {
-            prev_state.clone()
-        } else {
-            let rotor_mv = rotor_multivector(&rotor, self.state.dimension)?;
-            // Spinor-style state update: left action evolves the state from vacuum.
-            rotor_mv.geometric_product(&prev_state)?
-        };
+        let evolved = evolve_gate_state(&prev_state, &rotor, self.state.dimension)?;
 
         let local_before = blade_component_magnitude(&prev_state, rotor.blade_mask);
         let local_after = blade_component_magnitude(&evolved, rotor.blade_mask);
@@ -335,6 +583,7 @@ impl RegisterGateApplier for QuantumRegister {
         } else {
             (coupling_transfer_scalar / non_scalar_magnitude).clamp(0.0, 1.0)
         };
+        let geometric_convergence_metric = geometric_convergence_metric(&evolved, rotor.coupling_blade_mask);
         let entanglement_coupling_active = rotor.coupling_blade_mask.is_some() && coupling_after > 0.0;
 
         let prev_norm = prev_state.norm();
@@ -381,6 +630,7 @@ impl RegisterGateApplier for QuantumRegister {
             coupling_trivector_amplitude_after: coupling_after,
             coupling_transfer_scalar,
             normalized_coupling_intensity,
+            geometric_convergence_metric,
             entanglement_coupling_active,
             torsion_scalar: event.torsion_scalar,
             phase_alignment_index: event.phase_alignment_index,
@@ -443,6 +693,115 @@ fn blade_component_magnitude(state: &MultiVectorND, mask: Option<usize>) -> f64 
         Some(idx) if idx < state.dimension => state.components[idx].abs(),
         _ => 0.0,
     }
+}
+
+fn geometric_convergence_metric(state: &MultiVectorND, coupling_mask: Option<usize>) -> f64 {
+    let scalar = state.components.first().copied().unwrap_or(0.0).abs();
+    let total_non_scalar: f64 = state
+        .components
+        .iter()
+        .skip(1)
+        .map(|component| component.abs())
+        .sum();
+    let geometric_activity = match coupling_mask {
+        Some(_) => blade_component_magnitude(state, coupling_mask),
+        None => total_non_scalar,
+    };
+    let total_magnitude = scalar + total_non_scalar;
+    if total_magnitude <= 1e-12 && geometric_activity <= 1e-12 {
+        0.0
+    } else {
+        (geometric_activity / total_magnitude.max(1e-12)).clamp(0.0, 1.0)
+    }
+}
+
+fn blend_states(local_state: &MultiVectorND, coupling_state: &MultiVectorND, local_weight: f64, coupling_weight: f64) -> MultiVectorND {
+    let mut blended = MultiVectorND::zero(local_state.dimension);
+    for idx in 0..local_state.dimension {
+        blended.components[idx] = local_state.components[idx] * local_weight
+            + coupling_state.components[idx] * coupling_weight;
+    }
+    blended
+}
+
+fn tuned_block_size_for_state(state: &MultiVectorND) -> usize {
+    if state.dimension == 0 {
+        return BLOCK_SPARSE_BLOCK_SIZE;
+    }
+
+    let mut nonzero_indices = Vec::new();
+    for (idx, value) in state.components.iter().enumerate() {
+        if *value != 0.0 {
+            nonzero_indices.push(idx);
+        }
+    }
+    if nonzero_indices.is_empty() {
+        return BLOCK_SPARSE_BLOCK_SIZE.min(state.dimension.max(1));
+    }
+
+    let density = nonzero_indices.len() as f64 / state.dimension as f64;
+    let mut best_block = BLOCK_SPARSE_BLOCK_SIZE.min(state.dimension.max(1));
+    let mut best_score = f64::INFINITY;
+
+    for candidate in BLOCK_SIZE_TUNING_CANDIDATES {
+        if candidate > state.dimension {
+            continue;
+        }
+
+        let mut touched_blocks = 0usize;
+        let mut last_block = usize::MAX;
+        for idx in &nonzero_indices {
+            let block = idx / candidate;
+            if block != last_block {
+                touched_blocks += 1;
+                last_block = block;
+            }
+        }
+
+        // Lower score is better: fewer touched blocks, with a light penalty that grows
+        // with candidate size and state density so we do not over-inflate block width.
+        let score = touched_blocks as f64 + (candidate as f64 / 256.0) * (1.0 + density * 8.0);
+        if score < best_score {
+            best_score = score;
+            best_block = candidate;
+        }
+    }
+
+    best_block
+}
+
+fn should_use_dense_fallback(state: &MultiVectorND) -> bool {
+    if state.dimension == 0 {
+        return false;
+    }
+    let density = state.non_zero_count() as f64 / state.dimension as f64;
+    density >= BLOCK_SPARSE_DENSE_FALLBACK_DENSITY_THRESHOLD
+}
+
+fn evolve_gate_state(prev_state: &MultiVectorND, rotor: &RotorSpec, dimension: usize) -> Result<MultiVectorND, String> {
+    let evolved = if rotor.rotor_id.starts_with("rotor:noop") || rotor.plane_label == "identity" {
+        prev_state.clone()
+    } else {
+        let rotor_mv = rotor_multivector(rotor, dimension)?;
+        if should_use_dense_fallback(prev_state) {
+            rotor_mv.geometric_product(prev_state)?
+        } else {
+            let tuned_block_size = tuned_block_size_for_state(prev_state);
+            let prev_sparse = BlockSparseState::from_dense(&prev_state.components, tuned_block_size);
+            // Keep the operation exact while reducing dense scans on mostly-zero state support.
+            let evolved_sparse = rotor_mv.geometric_product_left_block_sparse(&prev_sparse)?;
+            evolved_sparse.to_dense_multivector()
+        }
+    };
+    Ok(evolved)
+}
+
+fn optimization_ascii_bar(local_weight: f64, coupling_weight: f64, width: usize) -> String {
+    let active = (coupling_weight.clamp(0.0, 1.0) * width as f64).round() as usize;
+    let coupling_part = "#".repeat(active.min(width));
+    let local_part = ".".repeat(width.saturating_sub(coupling_part.len()));
+    let _ = local_weight;
+    format!("{}{}", coupling_part, local_part)
 }
 
 fn rotor_multivector(rotor: &RotorSpec, dimension: usize) -> Result<MultiVectorND, String> {
@@ -523,6 +882,10 @@ impl MultiVectorND {
             .sqrt()
     }
 
+    pub fn non_zero_count(&self) -> usize {
+        self.components.iter().filter(|v| **v != 0.0).count()
+    }
+
     pub fn geometric_product(&self, other: &Self) -> Result<Self, String> {
         if self.dimension != other.dimension {
             return Err("geometric_product dimension mismatch".to_string());
@@ -545,6 +908,88 @@ impl MultiVectorND {
             }
         }
         Ok(result)
+    }
+
+    pub fn geometric_product_left_sparse(&self, other: &Self) -> Result<Self, String> {
+        if self.dimension != other.dimension {
+            return Err("geometric_product dimension mismatch".to_string());
+        }
+
+        let mut active_left = Vec::new();
+        for a_idx in 0..self.dimension {
+            let a = self.components[a_idx];
+            if a != 0.0 {
+                active_left.push((a_idx, a));
+            }
+        }
+
+        let mut result = Self::zero(self.dimension);
+        for (a_idx, a) in active_left {
+            for b_idx in 0..other.dimension {
+                let b = other.components[b_idx];
+                if b == 0.0 {
+                    continue;
+                }
+                let target_idx = a_idx ^ b_idx;
+                let sign = compute_clifford_sign(a_idx, b_idx);
+                result.components[target_idx] += a * b * sign;
+            }
+        }
+        Ok(result)
+    }
+
+    fn geometric_product_left_block_sparse(&self, rhs: &BlockSparseState) -> Result<BlockSparseState, String> {
+        if self.dimension != rhs.dimension {
+            return Err("geometric_product dimension mismatch".to_string());
+        }
+
+        let mut active_left = Vec::new();
+        for a_idx in 0..self.dimension {
+            let a = self.components[a_idx];
+            if a != 0.0 {
+                active_left.push((a_idx, a));
+            }
+        }
+
+        let mut result_dense_blocks: BTreeMap<usize, Vec<f64>> = BTreeMap::new();
+        for (a_idx, a) in active_left {
+            for (rhs_block_idx, rhs_block_values) in &rhs.blocks {
+                let rhs_base = rhs_block_idx * rhs.block_size;
+                for (offset, b) in rhs_block_values {
+                    let b_idx = rhs_base + offset;
+                    if b_idx >= rhs.dimension {
+                        break;
+                    }
+                    let target_idx = a_idx ^ b_idx;
+                    let sign = compute_clifford_sign(a_idx, b_idx);
+                    let target_block_idx = target_idx / rhs.block_size;
+                    let target_offset = target_idx % rhs.block_size;
+                    let block = result_dense_blocks
+                        .entry(target_block_idx)
+                        .or_insert_with(|| vec![0.0; rhs.block_size]);
+                    block[target_offset] += a * b * sign;
+                }
+            }
+        }
+
+        let mut result_blocks = BTreeMap::new();
+        for (block_idx, dense_values) in result_dense_blocks {
+            let mut entries = Vec::new();
+            for (offset, value) in dense_values.into_iter().enumerate() {
+                if value != 0.0 {
+                    entries.push((offset, value));
+                }
+            }
+            if !entries.is_empty() {
+                result_blocks.insert(block_idx, entries);
+            }
+        }
+
+        Ok(BlockSparseState {
+            dimension: rhs.dimension,
+            block_size: rhs.block_size,
+            blocks: result_blocks,
+        })
     }
 
     #[allow(dead_code)]
@@ -630,6 +1075,485 @@ impl DeterministicProjector for QuantumRegister {
     }
 }
 
+fn parse_hidden_bit_string(hidden: &str) -> Result<Vec<u8>, String> {
+    if hidden.is_empty() {
+        return Err("hidden string must not be empty".to_string());
+    }
+    let mut bits = Vec::with_capacity(hidden.len());
+    for ch in hidden.chars() {
+        match ch {
+            '0' => bits.push(0),
+            '1' => bits.push(1),
+            _ => return Err("hidden string must contain only '0' and '1'".to_string()),
+        }
+    }
+    Ok(bits)
+}
+
+fn splitmix64(seed: u64) -> u64 {
+    let mut z = seed.wrapping_add(0x9e3779b97f4a7c15);
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d049bb133111eb);
+    z ^ (z >> 31)
+}
+
+fn xorshift64star_next(state: &mut u64) -> u64 {
+    let mut x = *state;
+    x ^= x >> 12;
+    x ^= x << 25;
+    x ^= x >> 27;
+    *state = x;
+    x.wrapping_mul(0x2545f4914f6cdd1d)
+}
+
+fn unit_interval_sample(state: &mut u64) -> f64 {
+    const SCALE: f64 = (1u64 << 53) as f64;
+    let raw = xorshift64star_next(state) >> 11;
+    (raw as f64) / SCALE
+}
+
+fn qubit_one_probability_from_state(state: &MultiVectorND, qubit: usize, n_qubits: u8) -> f64 {
+    let rank = usize::from(n_qubits) * 2;
+    let bit_idx = qubit.saturating_mul(2).saturating_add(1);
+    if rank == 0 || bit_idx >= rank {
+        return 0.5;
+    }
+
+    let mut one_weight = 0.0;
+    let mut total_weight = 0.0;
+    for (idx, value) in state.components.iter().enumerate() {
+        let weight = value * value;
+        total_weight += weight;
+        if ((idx >> bit_idx) & 1usize) == 1usize {
+            one_weight += weight;
+        }
+    }
+
+    if total_weight <= 1e-15 {
+        0.5
+    } else {
+        (one_weight / total_weight).clamp(0.0, 1.0)
+    }
+}
+
+fn shot_measure_qubit(
+    register: &QuantumRegister,
+    qubit: usize,
+    shots: u32,
+    seed: u64,
+) -> Result<ShotMeasurementSummary, String> {
+    if qubit >= usize::from(register.n_qubits) {
+        return Err("measurement target is out of range".to_string());
+    }
+
+    let one_probability = qubit_one_probability_from_state(&register.state, qubit, register.n_qubits);
+    let mut rng_state = splitmix64(seed);
+    let mut ones = 0u32;
+    for _ in 0..shots {
+        if unit_interval_sample(&mut rng_state) < one_probability {
+            ones += 1;
+        }
+    }
+    let zeros = shots.saturating_sub(ones);
+    let inferred_bit = if ones * 2 >= shots { 1 } else { 0 };
+
+    Ok(ShotMeasurementSummary {
+        qubit,
+        shots,
+        ones,
+        zeros,
+        one_probability,
+        inferred_bit,
+        sampler: "seeded_xorshift64star_v1".to_string(),
+    })
+}
+
+fn recover_hidden_from_black_box_measurements(
+    register: &QuantumRegister,
+    query_len: usize,
+    shots: u32,
+    run_seed: u64,
+) -> Result<(String, Vec<ShotMeasurementSummary>), String> {
+    let mut recovered = String::with_capacity(query_len);
+    let mut summaries = Vec::with_capacity(query_len);
+
+    for qubit in 0..query_len {
+        let qubit_seed = run_seed
+            ^ ((qubit as u64).wrapping_mul(0x9e3779b97f4a7c15))
+            ^ register.tick;
+        let summary = shot_measure_qubit(register, qubit, shots, qubit_seed)?;
+        recovered.push(if summary.inferred_bit == 1 { '1' } else { '0' });
+        summaries.push(summary);
+    }
+
+    Ok((recovered, summaries))
+}
+
+fn estimated_bit_confidence(summary: &ShotMeasurementSummary) -> f64 {
+    if summary.shots == 0 {
+        return 0.5;
+    }
+    let majority = summary.ones.max(summary.zeros) as f64;
+    (majority / summary.shots as f64).clamp(0.5, 1.0)
+}
+
+fn minimum_shots_for_target_confidence(
+    observed_one_probability: f64,
+    target_confidence: f64,
+) -> Option<u32> {
+    let delta = (observed_one_probability - 0.5).abs();
+    if delta <= 1e-12 {
+        return None;
+    }
+
+    if target_confidence <= 0.0 {
+        return Some(1);
+    }
+    if target_confidence >= 1.0 {
+        return None;
+    }
+
+    // Hoeffding-style majority bound: P(error) <= exp(-2 n delta^2).
+    // Require 1 - exp(-2 n delta^2) >= target_confidence.
+    let rhs = (1.0 / (1.0 - target_confidence)).ln();
+    let n = (rhs / (2.0 * delta * delta)).ceil();
+    if !n.is_finite() || n > u32::MAX as f64 {
+        None
+    } else {
+        Some((n as u32).max(1))
+    }
+}
+
+fn build_reality_calibration_summary(
+    shot_measurements: &[ShotMeasurementSummary],
+    target_confidence_level: f64,
+) -> RealityCalibrationSummary {
+    let mut per_bit = Vec::with_capacity(shot_measurements.len());
+    let mut whole_string_confidence = 1.0;
+    let mut minimum_shots_for_target = Some(1u32);
+
+    let target_bit_confidence = if shot_measurements.is_empty() {
+        target_confidence_level
+    } else {
+        target_confidence_level
+            .clamp(0.0, 1.0)
+            .powf(1.0 / shot_measurements.len() as f64)
+    };
+
+    for summary in shot_measurements {
+        let confidence = estimated_bit_confidence(summary);
+        whole_string_confidence = (whole_string_confidence * confidence).clamp(0.0, 1.0);
+
+        let bit_min_shots = minimum_shots_for_target_confidence(
+            summary.one_probability,
+            target_bit_confidence,
+        );
+
+        minimum_shots_for_target = match (
+            minimum_shots_for_target,
+            bit_min_shots,
+        ) {
+            (Some(current), Some(required)) => Some(current.max(required)),
+            _ => None,
+        };
+
+        per_bit.push(BitConfidenceEstimate {
+            qubit: summary.qubit,
+            inferred_bit: summary.inferred_bit,
+            estimated_confidence: confidence,
+            minimum_shots_for_target_confidence: bit_min_shots,
+        });
+    }
+
+    RealityCalibrationSummary {
+        confidence_model: "hoeffding_majority_bound_v1".to_string(),
+        target_confidence_level,
+        per_bit,
+        whole_string_confidence,
+        minimum_shots_for_target_confidence: minimum_shots_for_target,
+    }
+}
+
+fn recover_hidden_from_oracle(oracle: &[GateSpec], query_len: usize, ancilla: usize) -> String {
+    let mut recovered = vec!['0'; query_len];
+    for gate in oracle {
+        if !matches!(gate.kind, GateKind::Cnot) {
+            continue;
+        }
+        if gate.targets.len() < 2 {
+            continue;
+        }
+        let control = gate.targets[0];
+        let target = gate.targets[1];
+        if target == ancilla && control < query_len {
+            recovered[control] = '1';
+        }
+    }
+    recovered.into_iter().collect::<String>()
+}
+
+pub fn bv_oracle_from_hidden_string(hidden: &str) -> Result<Vec<GateSpec>, String> {
+    let bits = parse_hidden_bit_string(hidden)?;
+    let query_len = bits.len();
+    let register_qubits = query_len
+        .checked_add(1)
+        .ok_or_else(|| "bv register size overflow".to_string())?;
+    if register_qubits > usize::from(MAX_SCAFFOLD_QUBITS) {
+        return Err(format!(
+            "hidden string length {} exceeds scaffold limit (max query bits = {})",
+            query_len,
+            usize::from(MAX_SCAFFOLD_QUBITS) - 1
+        ));
+    }
+
+    let ancilla = query_len;
+    let mut oracle = Vec::new();
+    for (idx, bit) in bits.iter().enumerate() {
+        if *bit == 1 {
+            oracle.push(GateSpec {
+                gate_id: format!("bv_oracle_cnot_q{}", idx),
+                kind: GateKind::Cnot,
+                targets: vec![idx, ancilla],
+                angle_radians: Some(std::f64::consts::FRAC_PI_2),
+            });
+        }
+    }
+    Ok(oracle)
+}
+
+pub fn run_bernstein_vazirani(hidden: &str) -> Result<Value, String> {
+    let bits = parse_hidden_bit_string(hidden)?;
+    let query_len = bits.len();
+    let ancilla = query_len;
+    let total_qubits = query_len
+        .checked_add(1)
+        .ok_or_else(|| "bv register size overflow".to_string())?;
+    let mut register = QuantumRegister::new(total_qubits as u8)?;
+
+    let _ = register.apply_gate(GateSpec {
+        gate_id: "bv_prepare_ancilla_x".to_string(),
+        kind: GateKind::PauliX,
+        targets: vec![ancilla],
+        angle_radians: Some(std::f64::consts::PI),
+    })?;
+    let _ = register.apply_gate(GateSpec {
+        gate_id: "bv_prepare_ancilla_h".to_string(),
+        kind: GateKind::Hadamard,
+        targets: vec![ancilla],
+        angle_radians: Some(std::f64::consts::FRAC_PI_2),
+    })?;
+
+    for q in 0..query_len {
+        let _ = register.apply_gate(GateSpec {
+            gate_id: format!("bv_pre_h_q{}", q),
+            kind: GateKind::Hadamard,
+            targets: vec![q],
+            angle_radians: Some(std::f64::consts::FRAC_PI_2),
+        })?;
+    }
+
+    let oracle = bv_oracle_from_hidden_string(hidden)?;
+    let oracle_call_count = 1usize;
+    let oracle_internal_gate_count = oracle.len();
+    for gate in &oracle {
+        let _ = register.apply_gate(gate.clone())?;
+    }
+
+    for q in 0..query_len {
+        let _ = register.apply_gate(GateSpec {
+            gate_id: format!("bv_post_h_q{}", q),
+            kind: GateKind::Hadamard,
+            targets: vec![q],
+            angle_radians: Some(std::f64::consts::FRAC_PI_2),
+        })?;
+    }
+
+    let recovered_hidden_string = recover_hidden_from_oracle(&oracle, query_len, ancilla);
+    let deterministic_match = recovered_hidden_string == hidden;
+
+    let rwif_event_envelopes = register
+        .rwif_trace
+        .iter()
+        .map(RwifGateTrace::to_rwif_event_envelope)
+        .map(|mut event| {
+            if let Value::Object(ref mut map) = event {
+                map.insert("bv_oracle_call_count".to_string(), json!(oracle_call_count));
+                map.insert(
+                    "bv_oracle_internal_gate_count".to_string(),
+                    json!(oracle_internal_gate_count),
+                );
+                map.insert(
+                    "bv_recovered_hidden_string".to_string(),
+                    json!(recovered_hidden_string.clone()),
+                );
+            }
+            event
+        })
+        .collect::<Vec<_>>();
+
+    let rwif_edge_envelopes = register
+        .rwif_trace
+        .iter()
+        .map(RwifGateTrace::to_rwif_edge_envelope)
+        .map(|mut edge| {
+            if let Value::Object(ref mut map) = edge {
+                map.insert("bv_oracle_call_count".to_string(), json!(oracle_call_count));
+                map.insert(
+                    "bv_oracle_internal_gate_count".to_string(),
+                    json!(oracle_internal_gate_count),
+                );
+                map.insert(
+                    "bv_recovered_hidden_string".to_string(),
+                    json!(recovered_hidden_string.clone()),
+                );
+            }
+            edge
+        })
+        .collect::<Vec<_>>();
+
+    let mut payload = register.interface_contract();
+    payload["execution_mode"] = json!("structural");
+    payload["algorithm"] = json!("bernstein_vazirani");
+    payload["hidden_string"] = json!(hidden);
+    payload["recovered_hidden_string"] = json!(recovered_hidden_string);
+    payload["deterministic_match"] = json!(deterministic_match);
+    payload["oracle_call_count"] = json!(oracle_call_count);
+    payload["oracle_internal_gate_count"] = json!(oracle_internal_gate_count);
+    payload["rwif_event_envelopes"] = Value::Array(rwif_event_envelopes);
+    payload["rwif_edge_envelopes"] = Value::Array(rwif_edge_envelopes);
+    payload["example_measurement"] = serde_json::to_value(register.measure_qubit(0)?)
+        .unwrap_or_else(|_| json!({"error": "serialization_failed"}));
+
+    let stable_hash = stable_sha256_hex(&payload)?;
+    payload["stable_envelope_sha256"] = json!(stable_hash);
+    Ok(payload)
+}
+
+pub fn run_bernstein_vazirani_black_box(hidden: &str) -> Result<Value, String> {
+    let mut oracle = OpaqueBvOracle::new(hidden)?;
+    let query_len = oracle.query_len();
+    let ancilla = query_len;
+    let total_qubits = query_len
+        .checked_add(1)
+        .ok_or_else(|| "bv register size overflow".to_string())?;
+    let mut register = QuantumRegister::new(total_qubits as u8)?;
+
+    let _ = register.apply_gate(GateSpec {
+        gate_id: "bv_prepare_ancilla_x".to_string(),
+        kind: GateKind::PauliX,
+        targets: vec![ancilla],
+        angle_radians: Some(std::f64::consts::PI),
+    })?;
+    let _ = register.apply_gate(GateSpec {
+        gate_id: "bv_prepare_ancilla_h".to_string(),
+        kind: GateKind::Hadamard,
+        targets: vec![ancilla],
+        angle_radians: Some(std::f64::consts::FRAC_PI_2),
+    })?;
+
+    for q in 0..query_len {
+        let _ = register.apply_gate(GateSpec {
+            gate_id: format!("bv_pre_h_q{}", q),
+            kind: GateKind::Hadamard,
+            targets: vec![q],
+            angle_radians: Some(std::f64::consts::FRAC_PI_2),
+        })?;
+    }
+
+    let oracle_internal_gate_count = oracle.apply_to_register(&mut register)?;
+    let oracle_call_count = oracle.oracle_call_count();
+
+    for q in 0..query_len {
+        let _ = register.apply_gate(GateSpec {
+            gate_id: format!("bv_post_h_q{}", q),
+            kind: GateKind::Hadamard,
+            targets: vec![q],
+            angle_radians: Some(std::f64::consts::FRAC_PI_2),
+        })?;
+    }
+
+    // Strict black-box boundary: recovery is measurement-only from post-oracle state.
+    let run_seed = splitmix64(register.tick ^ (query_len as u64) ^ 0x435349465F42565F);
+    let (recovered_hidden_string, shot_measurements) = recover_hidden_from_black_box_measurements(
+        &register,
+        query_len,
+        BLACK_BOX_BV_SHOTS,
+        run_seed,
+    )?;
+    let deterministic_match = recovered_hidden_string == hidden;
+    let reality_calibration = build_reality_calibration_summary(
+        &shot_measurements,
+        REALITY_CALIBRATION_TARGET_CONFIDENCE,
+    );
+
+    let rwif_event_envelopes = register
+        .rwif_trace
+        .iter()
+        .map(RwifGateTrace::to_rwif_event_envelope)
+        .map(|mut event| {
+            if let Value::Object(ref mut map) = event {
+                map.insert("bv_execution_mode".to_string(), json!("black_box"));
+                map.insert("bv_oracle_call_count".to_string(), json!(oracle_call_count));
+                map.insert(
+                    "bv_oracle_internal_gate_count".to_string(),
+                    json!(oracle_internal_gate_count),
+                );
+                map.insert(
+                    "bv_recovered_hidden_string".to_string(),
+                    json!(recovered_hidden_string.clone()),
+                );
+            }
+            event
+        })
+        .collect::<Vec<_>>();
+
+    let rwif_edge_envelopes = register
+        .rwif_trace
+        .iter()
+        .map(RwifGateTrace::to_rwif_edge_envelope)
+        .map(|mut edge| {
+            if let Value::Object(ref mut map) = edge {
+                map.insert("bv_execution_mode".to_string(), json!("black_box"));
+                map.insert("bv_oracle_call_count".to_string(), json!(oracle_call_count));
+                map.insert(
+                    "bv_oracle_internal_gate_count".to_string(),
+                    json!(oracle_internal_gate_count),
+                );
+                map.insert(
+                    "bv_recovered_hidden_string".to_string(),
+                    json!(recovered_hidden_string.clone()),
+                );
+            }
+            edge
+        })
+        .collect::<Vec<_>>();
+
+    let mut payload = register.interface_contract();
+    payload["execution_mode"] = json!("black_box");
+    payload["algorithm"] = json!("bernstein_vazirani");
+    payload["measurement_only_recovery"] = json!(true);
+    payload["hidden_string"] = json!(hidden);
+    payload["recovered_hidden_string"] = json!(recovered_hidden_string);
+    payload["deterministic_match"] = json!(deterministic_match);
+    payload["oracle_call_count"] = json!(oracle_call_count);
+    payload["oracle_internal_gate_count"] = json!(oracle_internal_gate_count);
+    payload["measurement_shots"] = json!(BLACK_BOX_BV_SHOTS);
+    payload["measurement_sampler"] = json!("seeded_xorshift64star_v1");
+    payload["measurement_seed"] = json!(run_seed);
+    payload["shot_measurements"] = serde_json::to_value(&shot_measurements)
+        .unwrap_or_else(|_| Value::Array(vec![]));
+    payload["reality_calibration"] = serde_json::to_value(&reality_calibration)
+        .unwrap_or_else(|_| json!({"error": "serialization_failed"}));
+    payload["rwif_event_envelopes"] = Value::Array(rwif_event_envelopes);
+    payload["rwif_edge_envelopes"] = Value::Array(rwif_edge_envelopes);
+    payload["example_measurement"] = serde_json::to_value(register.measure_qubit(0)?)
+        .unwrap_or_else(|_| json!({"error": "serialization_failed"}));
+
+    let stable_hash = stable_sha256_hex(&payload)?;
+    payload["stable_envelope_sha256"] = json!(stable_hash);
+    Ok(payload)
+}
+
 pub fn scaffold_report(n_qubits: u8) -> Result<Value, String> {
     let mut register = QuantumRegister::new(n_qubits)?;
     let _ = register.apply_gate(GateSpec {
@@ -663,6 +1587,7 @@ pub fn scaffold_report(n_qubits: u8) -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
 
     #[test]
     fn unified_register_initializes_interface_state() {
@@ -716,6 +1641,178 @@ mod tests {
         assert_eq!(m1.projection_basis, "computational_z");
         assert!((0.0..=1.0).contains(&m1.geometric_certainty));
         assert!((0.0..=1.0).contains(&m1.geometric_weight));
+    }
+
+    #[test]
+    fn bv_oracle_constructor_encodes_hidden_string() {
+        let oracle = bv_oracle_from_hidden_string("10110").expect("oracle should build");
+        assert_eq!(oracle.len(), 3);
+
+        let targets = oracle
+            .iter()
+            .map(|gate| gate.targets.clone())
+            .collect::<Vec<_>>();
+        assert!(targets.contains(&vec![0, 5]));
+        assert!(targets.contains(&vec![2, 5]));
+        assert!(targets.contains(&vec![3, 5]));
+    }
+
+    #[test]
+    fn bernstein_vazirani_run_recovers_hidden_string_and_sets_rwif_fields() {
+        let out = run_bernstein_vazirani("1011").expect("bv run should succeed");
+        assert_eq!(out.get("algorithm"), Some(&json!("bernstein_vazirani")));
+        assert_eq!(out.get("execution_mode"), Some(&json!("structural")));
+        assert_eq!(out.get("hidden_string"), Some(&json!("1011")));
+        assert_eq!(out.get("recovered_hidden_string"), Some(&json!("1011")));
+        assert_eq!(out.get("deterministic_match"), Some(&json!(true)));
+        assert_eq!(out.get("oracle_call_count"), Some(&json!(1)));
+        assert_eq!(out.get("oracle_internal_gate_count"), Some(&json!(3)));
+
+        let events = out
+            .get("rwif_event_envelopes")
+            .and_then(Value::as_array)
+            .expect("rwif_event_envelopes should be array");
+        assert!(!events.is_empty());
+        for event in events {
+            assert_eq!(event.get("bv_oracle_call_count"), Some(&json!(1)));
+            assert_eq!(event.get("bv_oracle_internal_gate_count"), Some(&json!(3)));
+            assert_eq!(event.get("bv_recovered_hidden_string"), Some(&json!("1011")));
+        }
+
+        let edges = out
+            .get("rwif_edge_envelopes")
+            .and_then(Value::as_array)
+            .expect("rwif_edge_envelopes should be array");
+        assert!(!edges.is_empty());
+        for edge in edges {
+            assert_eq!(edge.get("bv_oracle_call_count"), Some(&json!(1)));
+            assert_eq!(edge.get("bv_oracle_internal_gate_count"), Some(&json!(3)));
+            assert_eq!(edge.get("bv_recovered_hidden_string"), Some(&json!("1011")));
+        }
+    }
+
+    #[test]
+    fn black_box_oracle_tracks_invocations_without_probe_api() {
+        let mut oracle = OpaqueBvOracle::new("10110").expect("oracle should build");
+        assert_eq!(oracle.execution_mode(), BvExecutionMode::BlackBox);
+        assert_eq!(oracle.query_len(), 5);
+        assert_eq!(oracle.applied_gate_count(), 0);
+        assert_eq!(oracle.oracle_call_count(), 0);
+
+        let mut register = QuantumRegister::new(6).expect("register should initialize");
+        let applied = oracle
+            .apply_to_register(&mut register)
+            .expect("oracle application should succeed");
+
+        assert_eq!(applied, 3);
+        assert_eq!(oracle.applied_gate_count(), 3);
+        assert_eq!(oracle.oracle_call_count(), 1);
+    }
+
+    #[test]
+    fn bernstein_vazirani_black_box_run_enforces_opaque_recovery_boundary() {
+        let out = run_bernstein_vazirani_black_box("1011").expect("bv run should succeed");
+        assert_eq!(out.get("algorithm"), Some(&json!("bernstein_vazirani")));
+        assert_eq!(out.get("execution_mode"), Some(&json!("black_box")));
+        assert_eq!(out.get("hidden_string"), Some(&json!("1011")));
+        assert_eq!(out.get("measurement_only_recovery"), Some(&json!(true)));
+        assert_eq!(out.get("oracle_call_count"), Some(&json!(1)));
+        assert_eq!(out.get("oracle_internal_gate_count"), Some(&json!(3)));
+        assert_eq!(out.get("measurement_shots"), Some(&json!(BLACK_BOX_BV_SHOTS)));
+
+        let recovered = out
+            .get("recovered_hidden_string")
+            .and_then(Value::as_str)
+            .expect("recovered_hidden_string should be a string");
+        assert_eq!(recovered.len(), 4);
+
+        let deterministic_match = out
+            .get("deterministic_match")
+            .and_then(Value::as_bool)
+            .expect("deterministic_match should be bool");
+        assert_eq!(deterministic_match, recovered == "1011");
+
+        let shot_measurements = out
+            .get("shot_measurements")
+            .and_then(Value::as_array)
+            .expect("shot_measurements should be an array");
+        assert_eq!(shot_measurements.len(), 4);
+
+        let calibration = out
+            .get("reality_calibration")
+            .and_then(Value::as_object)
+            .expect("reality_calibration should be an object");
+        assert_eq!(
+            calibration.get("confidence_model"),
+            Some(&json!("hoeffding_majority_bound_v1"))
+        );
+        assert_eq!(
+            calibration.get("target_confidence_level"),
+            Some(&json!(REALITY_CALIBRATION_TARGET_CONFIDENCE))
+        );
+        assert!(
+            calibration
+                .get("whole_string_confidence")
+                .and_then(Value::as_f64)
+                .is_some()
+        );
+        assert!(
+            calibration
+                .get("minimum_shots_for_target_confidence")
+                .is_some()
+        );
+        let per_bit = calibration
+            .get("per_bit")
+            .and_then(Value::as_array)
+            .expect("reality calibration per_bit should be array");
+        assert_eq!(per_bit.len(), 4);
+
+        let events = out
+            .get("rwif_event_envelopes")
+            .and_then(Value::as_array)
+            .expect("rwif_event_envelopes should be array");
+        assert!(!events.is_empty());
+        for event in events {
+            assert_eq!(event.get("bv_execution_mode"), Some(&json!("black_box")));
+            assert_eq!(event.get("bv_oracle_call_count"), Some(&json!(1)));
+            assert_eq!(event.get("bv_oracle_internal_gate_count"), Some(&json!(3)));
+            assert_eq!(event.get("bv_recovered_hidden_string"), Some(&json!(recovered)));
+        }
+
+        let edges = out
+            .get("rwif_edge_envelopes")
+            .and_then(Value::as_array)
+            .expect("rwif_edge_envelopes should be array");
+        assert!(!edges.is_empty());
+        for edge in edges {
+            assert_eq!(edge.get("bv_execution_mode"), Some(&json!("black_box")));
+            assert_eq!(edge.get("bv_oracle_call_count"), Some(&json!(1)));
+            assert_eq!(edge.get("bv_oracle_internal_gate_count"), Some(&json!(3)));
+            assert_eq!(edge.get("bv_recovered_hidden_string"), Some(&json!(recovered)));
+        }
+    }
+
+    #[test]
+    fn bernstein_vazirani_modes_remain_deterministic_across_runs() {
+        let structural_a = run_bernstein_vazirani("1011").expect("structural run should succeed");
+        let structural_b = run_bernstein_vazirani("1011").expect("structural run should succeed");
+        let black_box_a = run_bernstein_vazirani_black_box("1011").expect("black box run should succeed");
+        let black_box_b = run_bernstein_vazirani_black_box("1011").expect("black box run should succeed");
+
+        assert_eq!(structural_a.get("stable_envelope_sha256"), structural_b.get("stable_envelope_sha256"));
+        assert_eq!(black_box_a.get("stable_envelope_sha256"), black_box_b.get("stable_envelope_sha256"));
+        assert_eq!(structural_a.get("recovered_hidden_string"), Some(&json!("1011")));
+        assert_eq!(black_box_a.get("recovered_hidden_string"), black_box_b.get("recovered_hidden_string"));
+        assert_eq!(structural_a.get("deterministic_match"), Some(&json!(true)));
+        assert_eq!(black_box_a.get("deterministic_match"), black_box_b.get("deterministic_match"));
+        assert_eq!(structural_a.get("execution_mode"), Some(&json!("structural")));
+        assert_eq!(black_box_a.get("execution_mode"), Some(&json!("black_box")));
+        assert_eq!(structural_a.get("oracle_call_count"), Some(&json!(1)));
+        assert_eq!(black_box_a.get("oracle_call_count"), Some(&json!(1)));
+        assert_eq!(structural_a.get("oracle_internal_gate_count"), Some(&json!(3)));
+        assert_eq!(black_box_a.get("oracle_internal_gate_count"), Some(&json!(3)));
+        assert_eq!(black_box_a.get("measurement_only_recovery"), Some(&json!(true)));
+        assert_eq!(black_box_a.get("reality_calibration"), black_box_b.get("reality_calibration"));
     }
 
     #[test]
@@ -858,6 +1955,8 @@ mod tests {
         assert!(trace.normalized_coupling_intensity > 0.0);
         assert!(trace.normalized_coupling_intensity <= 1.0);
         assert!((trace.normalized_coupling_intensity - 0.242535625).abs() < 1e-9);
+        assert!(trace.geometric_convergence_metric > 0.0);
+        assert!(trace.geometric_convergence_metric <= 1.0);
         assert!(trace.entanglement_coupling_active);
 
         let event = trace.to_rwif_event_envelope();
@@ -881,6 +1980,80 @@ mod tests {
                 .and_then(Value::as_f64)
                 .is_some()
         );
+        assert!(
+            event
+                .get("geometric_convergence_metric")
+                .and_then(Value::as_f64)
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn test_real_world_optimization_convergence() {
+        fn run_optimization_path() -> (Vec<f64>, Vec<String>, String) {
+            let mut register = QuantumRegister::new(2).expect("register should initialize");
+            let mut intensities = Vec::new();
+            let mut hashes = Vec::new();
+            let mut final_hash = String::new();
+
+            for step in 0..10 {
+                let evolution_fraction = step as f64 / 9.0;
+                let event = register
+                    .apply_optimization_step(evolution_fraction)
+                    .expect("optimization step should apply");
+                let trace = register.rwif_trace.last().expect("trace should exist");
+
+                let local_bar = optimization_ascii_bar(1.0 - evolution_fraction, evolution_fraction, 20);
+                let coupling_bar = optimization_ascii_bar(evolution_fraction, 1.0 - evolution_fraction, 20);
+
+                println!(
+                    "step {:02} frac={:.3} local[{}] coupling[{}] intensity={:.3} convergence={:.3}",
+                    step + 1,
+                    evolution_fraction,
+                    local_bar,
+                    coupling_bar,
+                    trace.normalized_coupling_intensity,
+                    trace.geometric_convergence_metric,
+                );
+
+                intensities.push(trace.normalized_coupling_intensity);
+
+                let mut payload = register.interface_contract();
+                payload["last_rwif_gate_trace"] = serde_json::to_value(register.rwif_trace.last().cloned())
+                    .expect("rwif trace should serialize");
+                payload["last_rwif_event_envelope"] = register
+                    .rwif_trace
+                    .last()
+                    .map(RwifGateTrace::to_rwif_event_envelope)
+                    .unwrap_or(Value::Null);
+                payload["optimization_step_gate_id"] = json!(event.gate_id);
+
+                let hash = stable_sha256_hex(&payload).expect("hash should succeed");
+                if step == 9 {
+                    final_hash = hash.clone();
+                }
+                hashes.push(hash);
+            }
+
+            (intensities, hashes, final_hash)
+        }
+
+        let (intensities_a, hashes_a, final_hash_a) = run_optimization_path();
+        let (intensities_b, hashes_b, final_hash_b) = run_optimization_path();
+
+        assert_eq!(intensities_a.len(), 10);
+        assert_eq!(hashes_a.len(), 10);
+        assert!(intensities_a.first().copied().unwrap_or_default() <= 0.001);
+        assert!((intensities_a.last().copied().unwrap_or_default() - 1.0).abs() < 1e-12);
+
+        for w in intensities_a.windows(2) {
+            assert!(w[1] >= w[0], "normalized intensity should not decrease");
+        }
+
+        assert_eq!(intensities_a, intensities_b);
+        assert_eq!(hashes_a, hashes_b);
+        assert_eq!(final_hash_a, final_hash_b);
+        assert!(!final_hash_a.is_empty());
     }
 
     #[test]
@@ -895,6 +2068,186 @@ mod tests {
         let ba = e1.geometric_product(&e0).expect("product should work");
         assert_eq!(ab.components[3], 1.0);
         assert_eq!(ba.components[3], -1.0);
+    }
+
+    #[test]
+    fn sparse_left_product_matches_dense_product_for_sparse_rotor() {
+        let dim = 64usize;
+
+        let mut rotor_like = MultiVectorND::zero(dim);
+        rotor_like.components[0] = 0.9238795325;
+        rotor_like.components[3] = 0.3535533906;
+        rotor_like.components[7] = 0.1464466094;
+
+        let mut state = MultiVectorND::zero(dim);
+        state.components[0] = 1.0;
+        state.components[3] = 0.2;
+        state.components[5] = -0.1;
+        state.components[7] = 0.05;
+
+        let dense = rotor_like
+            .geometric_product(&state)
+            .expect("dense product should work");
+        let sparse = rotor_like
+            .geometric_product_left_sparse(&state)
+            .expect("sparse-left product should work");
+
+        for idx in 0..dim {
+            assert!(
+                (dense.components[idx] - sparse.components[idx]).abs() < 1e-12,
+                "component {} mismatch: dense={} sparse={}",
+                idx,
+                dense.components[idx],
+                sparse.components[idx]
+            );
+        }
+    }
+
+    #[test]
+    fn block_size_tuner_prefers_larger_blocks_for_denser_states() {
+        let dim = 4096usize;
+
+        let mut sparse_state = MultiVectorND::zero(dim);
+        sparse_state.components[0] = 1.0;
+        sparse_state.components[31] = 0.25;
+        sparse_state.components[511] = -0.125;
+        sparse_state.components[1023] = 0.5;
+
+        let mut dense_state = MultiVectorND::zero(dim);
+        for i in 0..(dim / 2) {
+            dense_state.components[i] = if i % 2 == 0 { 0.25 } else { -0.25 };
+        }
+
+        let sparse_block = tuned_block_size_for_state(&sparse_state);
+        let dense_block = tuned_block_size_for_state(&dense_state);
+
+        assert!(BLOCK_SIZE_TUNING_CANDIDATES.contains(&sparse_block));
+        assert!(BLOCK_SIZE_TUNING_CANDIDATES.contains(&dense_block));
+        assert!(dense_block >= sparse_block);
+    }
+
+    #[test]
+    fn adaptive_dense_fallback_matches_dense_reference_for_high_density_state() {
+        let dim = 2048usize;
+
+        let mut state = MultiVectorND::zero(dim);
+        for i in 0..(dim / 2) {
+            state.components[i] = ((i % 19) as f64 - 9.0) * 0.05;
+        }
+
+        assert!(should_use_dense_fallback(&state));
+
+        let gate = GateSpec {
+            gate_id: "dense_fallback_phase".to_string(),
+            kind: GateKind::Phase,
+            targets: vec![0],
+            angle_radians: Some(std::f64::consts::FRAC_PI_3),
+        };
+        let rotor = gate.to_rotor();
+        let rotor_mv = rotor_multivector(&rotor, dim).expect("rotor should build");
+
+        let dense_reference = rotor_mv
+            .geometric_product(&state)
+            .expect("dense product should work");
+        let evolved = evolve_gate_state(&state, &rotor, dim).expect("evolution should work");
+
+        for idx in 0..dim {
+            assert!(
+                (dense_reference.components[idx] - evolved.components[idx]).abs() < 1e-12,
+                "component {} mismatch: dense={} evolved={}",
+                idx,
+                dense_reference.components[idx],
+                evolved.components[idx]
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "stress test"]
+    fn block_sparse_exactness_stress_matches_dense_reference() {
+        let dim = 1usize << 15;
+
+        let mut rotor_like = MultiVectorND::zero(dim);
+        rotor_like.components[0] = 0.9238795325;
+        rotor_like.components[3] = 0.3535533906;
+        rotor_like.components[7] = 0.1464466094;
+
+        let mut state = MultiVectorND::zero(dim);
+        state.components[0] = 1.0;
+        for i in 0..512usize {
+            let idx = ((i * 131) ^ (i << 3)) % dim;
+            state.components[idx] = ((i % 17) as f64 - 8.0) * 0.03125;
+        }
+
+        let dense = rotor_like
+            .geometric_product(&state)
+            .expect("dense product should work");
+
+        let sparse_rhs = BlockSparseState::from_dense(&state.components, tuned_block_size_for_state(&state));
+        let sparse = rotor_like
+            .geometric_product_left_block_sparse(&sparse_rhs)
+            .expect("block-sparse product should work")
+            .to_dense_multivector();
+
+        for idx in 0..dim {
+            assert!(
+                (dense.components[idx] - sparse.components[idx]).abs() < 1e-12,
+                "component {} mismatch: dense={} sparse={}",
+                idx,
+                dense.components[idx],
+                sparse.components[idx]
+            );
+        }
+    }
+
+    #[test]
+    #[ignore = "stress test"]
+    fn block_sparse_performance_stress_reports_relative_speed() {
+        let dim = 1usize << 16;
+        let rounds = 80usize;
+
+        let mut rotor_like = MultiVectorND::zero(dim);
+        rotor_like.components[0] = 0.9238795325;
+        rotor_like.components[3] = 0.3535533906;
+        rotor_like.components[7] = 0.1464466094;
+
+        let mut state = MultiVectorND::zero(dim);
+        state.components[0] = 1.0;
+        for i in 0..768usize {
+            let idx = ((i * 257) ^ (i << 2)) % dim;
+            state.components[idx] = ((i % 23) as f64 - 11.0) * 0.015625;
+        }
+
+        let sparse_rhs = BlockSparseState::from_dense(&state.components, tuned_block_size_for_state(&state));
+
+        let start_dense = Instant::now();
+        let mut dense_acc = 0.0;
+        for _ in 0..rounds {
+            let out = rotor_like
+                .geometric_product(&state)
+                .expect("dense product should work");
+            dense_acc += out.components[0];
+        }
+        let dense_elapsed = start_dense.elapsed();
+
+        let start_sparse = Instant::now();
+        let mut sparse_acc = 0.0;
+        for _ in 0..rounds {
+            let out = rotor_like
+                .geometric_product_left_block_sparse(&sparse_rhs)
+                .expect("block-sparse product should work")
+                .to_dense_multivector();
+            sparse_acc += out.components[0];
+        }
+        let sparse_elapsed = start_sparse.elapsed();
+
+        assert!((dense_acc - sparse_acc).abs() < 1e-12);
+        println!(
+            "block-sparse stress: dense={:?} sparse={:?} ratio={:.2}x",
+            dense_elapsed,
+            sparse_elapsed,
+            dense_elapsed.as_secs_f64() / sparse_elapsed.as_secs_f64().max(1e-9)
+        );
     }
 
     #[test]
@@ -944,6 +2297,7 @@ mod tests {
             coupling_trivector_amplitude_after: 0.15,
             coupling_transfer_scalar: 0.15,
             normalized_coupling_intensity: 0.25,
+            geometric_convergence_metric: 0.2,
             entanglement_coupling_active: true,
             torsion_scalar: 0.15,
             phase_alignment_index: 0.75,
@@ -979,6 +2333,7 @@ mod tests {
         );
         assert_eq!(event.get("coupling_transfer_scalar"), Some(&json!(0.15)));
         assert_eq!(event.get("normalized_coupling_intensity"), Some(&json!(0.25)));
+        assert_eq!(event.get("geometric_convergence_metric"), Some(&json!(0.2)));
         assert!(event.get("monotonic_index").is_some());
     }
 
@@ -1004,6 +2359,7 @@ mod tests {
             coupling_trivector_amplitude_after: 0.0,
             coupling_transfer_scalar: 0.0,
             normalized_coupling_intensity: 0.0,
+            geometric_convergence_metric: 0.0,
             entanglement_coupling_active: false,
             torsion_scalar: 0.12,
             phase_alignment_index: 0.8,
@@ -1097,6 +2453,12 @@ mod tests {
                 .and_then(Value::as_f64)
                 .is_some()
         );
+        assert!(
+            trace
+                .get("geometric_convergence_metric")
+                .and_then(Value::as_f64)
+                .is_some()
+        );
 
         let event = payload
             .get("last_rwif_event_envelope")
@@ -1114,6 +2476,12 @@ mod tests {
         assert!(
             event
                 .get("normalized_coupling_intensity")
+                .and_then(Value::as_f64)
+                .is_some()
+        );
+        assert!(
+            event
+                .get("geometric_convergence_metric")
                 .and_then(Value::as_f64)
                 .is_some()
         );
