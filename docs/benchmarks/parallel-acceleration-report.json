@@ -1,0 +1,320 @@
+{
+  "object": "csif.quantum.parallel_acceleration_report",
+  "generated_at_utc": "2026-06-09T17:59:12.797411+00:00",
+  "runs_per_policy": 2,
+  "parallel_workers_detected": 28,
+  "full_threads_detected": 28,
+  "n_qubits_values": [
+    6,
+    7,
+    8
+  ],
+  "records": [
+    {
+      "workload": "dirac_annihilation_multi_profile",
+      "n_qubits": 6,
+      "command": [
+        "cargo",
+        "run",
+        "--quiet",
+        "--",
+        "dirac-annihilation",
+        "--n-qubits",
+        "6",
+        "--profiles",
+        "uniform-random,low-grade-bias,high-grade-bias,harmonic-stride",
+        "--unwinding-steps",
+        "128",
+        "--flux-coupling-density",
+        "0.40",
+        "--sweep-export",
+        "json"
+      ],
+      "sequential": {
+        "samples_ms": [
+          41.908,
+          45.755
+        ],
+        "mean_ms": 43.831,
+        "median_ms": 43.831,
+        "min_ms": 41.908,
+        "max_ms": 45.755
+      },
+      "rayon": {
+        "samples_ms": [
+          44.623,
+          53.706
+        ],
+        "mean_ms": 49.165,
+        "median_ms": 49.165,
+        "min_ms": 44.623,
+        "max_ms": 53.706
+      },
+      "speedup_factor_s": 0.892,
+      "amdahl": {
+        "serial_fraction_raw": 1.126202,
+        "serial_fraction_clamped": 1.0,
+        "parallelizable_fraction": 0.0,
+        "predicted_speedup_at_full_threads": 1.0
+      }
+    },
+    {
+      "workload": "dirac_mode_dense_sweep",
+      "n_qubits": 6,
+      "command": [
+        "cargo",
+        "run",
+        "--quiet",
+        "--",
+        "dirac-mode",
+        "--summary",
+        "--profile-report",
+        "--n-qubits",
+        "6",
+        "--state-model",
+        "high-grade-bias",
+        "--sweep-export",
+        "json",
+        "--sweep-coupling-densities",
+        "0.08,0.12,0.16,0.20,0.24,0.28,0.32,0.36,0.40",
+        "--sweep-seeds",
+        "42,777,20260609,271828",
+        "--perturbation-amplitudes",
+        "0.0,0.2,0.6",
+        "--perturbation-frequency",
+        "24"
+      ],
+      "sequential": {
+        "samples_ms": [
+          79.854,
+          89.151
+        ],
+        "mean_ms": 84.502,
+        "median_ms": 84.502,
+        "min_ms": 79.854,
+        "max_ms": 89.151
+      },
+      "rayon": {
+        "samples_ms": [
+          49.106,
+          58.781
+        ],
+        "mean_ms": 53.944,
+        "median_ms": 53.944,
+        "min_ms": 49.106,
+        "max_ms": 58.781
+      },
+      "speedup_factor_s": 1.566,
+      "amdahl": {
+        "serial_fraction_raw": 0.624982,
+        "serial_fraction_clamped": 0.624982,
+        "parallelizable_fraction": 0.375018,
+        "predicted_speedup_at_full_threads": 1.566476
+      }
+    },
+    {
+      "workload": "dirac_annihilation_multi_profile",
+      "n_qubits": 7,
+      "command": [
+        "cargo",
+        "run",
+        "--quiet",
+        "--",
+        "dirac-annihilation",
+        "--n-qubits",
+        "7",
+        "--profiles",
+        "uniform-random,low-grade-bias,high-grade-bias,harmonic-stride",
+        "--unwinding-steps",
+        "128",
+        "--flux-coupling-density",
+        "0.40",
+        "--sweep-export",
+        "json"
+      ],
+      "sequential": {
+        "samples_ms": [
+          45.971,
+          46.799
+        ],
+        "mean_ms": 46.385,
+        "median_ms": 46.385,
+        "min_ms": 45.971,
+        "max_ms": 46.799
+      },
+      "rayon": {
+        "samples_ms": [
+          40.716,
+          43.421
+        ],
+        "mean_ms": 42.069,
+        "median_ms": 42.069,
+        "min_ms": 40.716,
+        "max_ms": 43.421
+      },
+      "speedup_factor_s": 1.103,
+      "amdahl": {
+        "serial_fraction_raw": 0.903506,
+        "serial_fraction_clamped": 0.903506,
+        "parallelizable_fraction": 0.096494,
+        "predicted_speedup_at_full_threads": 1.102594
+      }
+    },
+    {
+      "workload": "dirac_mode_dense_sweep",
+      "n_qubits": 7,
+      "command": [
+        "cargo",
+        "run",
+        "--quiet",
+        "--",
+        "dirac-mode",
+        "--summary",
+        "--profile-report",
+        "--n-qubits",
+        "7",
+        "--state-model",
+        "high-grade-bias",
+        "--sweep-export",
+        "json",
+        "--sweep-coupling-densities",
+        "0.08,0.12,0.16,0.20,0.24,0.28,0.32,0.36,0.40",
+        "--sweep-seeds",
+        "42,777,20260609,271828",
+        "--perturbation-amplitudes",
+        "0.0,0.2,0.6",
+        "--perturbation-frequency",
+        "24"
+      ],
+      "sequential": {
+        "samples_ms": [
+          185.935,
+          177.886
+        ],
+        "mean_ms": 181.911,
+        "median_ms": 181.911,
+        "min_ms": 177.886,
+        "max_ms": 185.935
+      },
+      "rayon": {
+        "samples_ms": [
+          61.683,
+          67.329
+        ],
+        "mean_ms": 64.506,
+        "median_ms": 64.506,
+        "min_ms": 61.683,
+        "max_ms": 67.329
+      },
+      "speedup_factor_s": 2.82,
+      "amdahl": {
+        "serial_fraction_raw": 0.330698,
+        "serial_fraction_clamped": 0.330698,
+        "parallelizable_fraction": 0.669302,
+        "predicted_speedup_at_full_threads": 2.820066
+      }
+    },
+    {
+      "workload": "dirac_annihilation_multi_profile",
+      "n_qubits": 8,
+      "command": [
+        "cargo",
+        "run",
+        "--quiet",
+        "--",
+        "dirac-annihilation",
+        "--n-qubits",
+        "8",
+        "--profiles",
+        "uniform-random,low-grade-bias,high-grade-bias,harmonic-stride",
+        "--unwinding-steps",
+        "128",
+        "--flux-coupling-density",
+        "0.40",
+        "--sweep-export",
+        "json"
+      ],
+      "sequential": {
+        "samples_ms": [
+          56.473,
+          45.311
+        ],
+        "mean_ms": 50.892,
+        "median_ms": 50.892,
+        "min_ms": 45.311,
+        "max_ms": 56.473
+      },
+      "rayon": {
+        "samples_ms": [
+          37.516,
+          38.865
+        ],
+        "mean_ms": 38.191,
+        "median_ms": 38.191,
+        "min_ms": 37.516,
+        "max_ms": 38.865
+      },
+      "speedup_factor_s": 1.333,
+      "amdahl": {
+        "serial_fraction_raw": 0.741189,
+        "serial_fraction_clamped": 0.741189,
+        "parallelizable_fraction": 0.258811,
+        "predicted_speedup_at_full_threads": 1.332565
+      }
+    },
+    {
+      "workload": "dirac_mode_dense_sweep",
+      "n_qubits": 8,
+      "command": [
+        "cargo",
+        "run",
+        "--quiet",
+        "--",
+        "dirac-mode",
+        "--summary",
+        "--profile-report",
+        "--n-qubits",
+        "8",
+        "--state-model",
+        "high-grade-bias",
+        "--sweep-export",
+        "json",
+        "--sweep-coupling-densities",
+        "0.08,0.12,0.16,0.20,0.24,0.28,0.32,0.36,0.40",
+        "--sweep-seeds",
+        "42,777,20260609,271828",
+        "--perturbation-amplitudes",
+        "0.0,0.2,0.6",
+        "--perturbation-frequency",
+        "24"
+      ],
+      "sequential": {
+        "samples_ms": [
+          603.562,
+          599.955
+        ],
+        "mean_ms": 601.759,
+        "median_ms": 601.759,
+        "min_ms": 599.955,
+        "max_ms": 603.562
+      },
+      "rayon": {
+        "samples_ms": [
+          98.254,
+          98.44
+        ],
+        "mean_ms": 98.347,
+        "median_ms": 98.347,
+        "min_ms": 98.254,
+        "max_ms": 98.44
+      },
+      "speedup_factor_s": 6.119,
+      "amdahl": {
+        "serial_fraction_raw": 0.132449,
+        "serial_fraction_clamped": 0.132449,
+        "parallelizable_fraction": 0.867551,
+        "predicted_speedup_at_full_threads": 6.118717
+      }
+    }
+  ]
+}

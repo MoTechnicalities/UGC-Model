@@ -1,0 +1,55 @@
+{
+  "object": "csif.quantum.vector2.parallel_benchmark",
+  "generated_at_utc": "2026-06-09T17:37:02.724243+00:00",
+  "runs_per_command": 3,
+  "results": {
+    "shor_baseline": {
+      "samples_ms": [
+        35.133,
+        41.371,
+        36.975
+      ],
+      "mean_ms": 37.826,
+      "median_ms": 36.975,
+      "min_ms": 35.133,
+      "max_ms": 41.371,
+      "mean_vs_shor_baseline_x": 1.0
+    },
+    "bell_sweep_parallel": {
+      "samples_ms": [
+        40.612,
+        53.184,
+        55.133
+      ],
+      "mean_ms": 49.643,
+      "median_ms": 53.184,
+      "min_ms": 40.612,
+      "max_ms": 55.133,
+      "mean_vs_shor_baseline_x": 1.312
+    },
+    "dirac_mode_sweep_parallel": {
+      "samples_ms": [
+        98.957,
+        105.684,
+        92.885
+      ],
+      "mean_ms": 99.175,
+      "median_ms": 98.957,
+      "min_ms": 92.885,
+      "max_ms": 105.684,
+      "mean_vs_shor_baseline_x": 2.622
+    },
+    "dirac_annihilation_parallel": {
+      "samples_ms": [
+        40.522,
+        44.538,
+        41.638
+      ],
+      "mean_ms": 42.232,
+      "median_ms": 41.638,
+      "min_ms": 40.522,
+      "max_ms": 44.538,
+      "mean_vs_shor_baseline_x": 1.116
+    }
+  }
+}

@@ -1,4 +1,5 @@
 use sha2::{Digest, Sha256};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
@@ -11,6 +12,12 @@ const REALITY_CALIBRATION_TARGET_CONFIDENCE: f64 = 0.95;
 const BLOCK_SPARSE_BLOCK_SIZE: usize = 256;
 const BLOCK_SPARSE_DENSE_FALLBACK_DENSITY_THRESHOLD: f64 = 0.12;
 const BLOCK_SIZE_TUNING_CANDIDATES: [usize; 5] = [64, 128, 256, 512, 1024];
+
+fn rayon_execution_enabled() -> bool {
+    let raw = std::env::var("UGC_RAYON_DISABLE").unwrap_or_default();
+    let token = raw.trim().to_ascii_lowercase();
+    !(token == "1" || token == "true" || token == "yes" || token == "on")
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct MultiVectorND {
@@ -1029,19 +1036,50 @@ pub fn dirac_annihilation_sweep_export(
         return Err("profiles must not be empty".to_string());
     }
 
-    let mut summaries = Vec::<DiracAnnihilationProfileSummary>::new();
-    for profile in profiles {
-        let canonical = canonical_dirac_state_model(profile);
-        if !is_supported_dirac_state_model(canonical) {
-            return Err(format!("unsupported dirac-annihilation state model: {}", profile));
+    let mut summaries = if rayon_execution_enabled() {
+        profiles
+            .par_iter()
+            .enumerate()
+            .map(|(idx, profile)| -> Result<(usize, DiracAnnihilationProfileSummary), String> {
+                let canonical = canonical_dirac_state_model(profile);
+                if !is_supported_dirac_state_model(canonical) {
+                    return Err(format!("unsupported dirac-annihilation state model: {}", profile));
+                }
+                Ok((
+                    idx,
+                    simulate_dirac_annihilation_profile(
+                        canonical,
+                        n_qubits,
+                        unwinding_steps,
+                        flux_coupling_density,
+                    ),
+                ))
+            })
+            .collect::<Result<Vec<_>, String>>()?
+    } else {
+        let mut out = Vec::<(usize, DiracAnnihilationProfileSummary)>::new();
+        for (idx, profile) in profiles.iter().enumerate() {
+            let canonical = canonical_dirac_state_model(profile);
+            if !is_supported_dirac_state_model(canonical) {
+                return Err(format!("unsupported dirac-annihilation state model: {}", profile));
+            }
+            out.push((
+                idx,
+                simulate_dirac_annihilation_profile(
+                    canonical,
+                    n_qubits,
+                    unwinding_steps,
+                    flux_coupling_density,
+                ),
+            ));
         }
-        summaries.push(simulate_dirac_annihilation_profile(
-            canonical,
-            n_qubits,
-            unwinding_steps,
-            flux_coupling_density,
-        ));
-    }
+        out
+    };
+    summaries.sort_by(|a, b| a.0.cmp(&b.0));
+    let summaries = summaries
+        .into_iter()
+        .map(|(_, summary)| summary)
+        .collect::<Vec<_>>();
 
     match format {
         "json" => {
@@ -1665,21 +1703,121 @@ pub fn dirac_mode_sweep_points_with_perturbation(
     let register = QuantumRegister::new(n_qubits)?;
     let dimension = register.state.dimension;
     let threshold = BLOCK_SPARSE_DENSE_FALLBACK_DENSITY_THRESHOLD;
-    let mut points = Vec::<DiracModeSweepPoint>::new();
 
     for &coupling_density in coupling_densities {
         if !(0.0..=1.0).contains(&coupling_density) {
             return Err(format!("coupling_density must be in [0,1], got {}", coupling_density));
         }
+    }
 
-        for &seed in seeds {
+    let jobs = coupling_densities
+        .iter()
+        .enumerate()
+        .flat_map(|(density_idx, coupling_density)| {
+            seeds
+                .iter()
+                .enumerate()
+                .map(move |(seed_idx, seed)| (density_idx, seed_idx, *coupling_density, *seed))
+        })
+        .collect::<Vec<_>>();
+
+    let grouped = if rayon_execution_enabled() {
+        jobs.par_iter()
+            .map(
+                |(density_idx, seed_idx, coupling_density, seed)|
+                 -> Result<(usize, usize, Vec<(usize, DiracModeSweepPoint)>), String> {
+                    let state = synthetic_density_state(dimension, *coupling_density, *seed, state_model)?;
+                    let (support_density, low_grade_concentration, observed_density) =
+                        observed_dirac_density(&state, state_model);
+                    let threshold_distance = observed_density - threshold;
+                    let dense_fallback_active = observed_density >= threshold;
+
+                    let mut per_amplitude = Vec::<(usize, DiracModeSweepPoint)>::new();
+                    for (amp_idx, perturbation_amplitude) in perturbation_amplitudes.iter().enumerate() {
+                        let (
+                            perturbed_observed_density,
+                            perturbed_threshold_distance,
+                            perturbed_dense_fallback_active,
+                            phase_relaxation_steps,
+                            torsion_hysteresis,
+                            perturbation_volatility_index,
+                        ) = dirac_perturbation_response(
+                            observed_density,
+                            low_grade_concentration,
+                            *coupling_density,
+                            *seed,
+                            state_model,
+                            *perturbation_amplitude,
+                            perturbation_frequency,
+                            threshold,
+                        );
+
+                        let stable_source = json!({
+                            "mode": "dirac_mode_density_sweep_v2_perturbation",
+                            "state_model": state_model,
+                            "coupling_density": bell_round6(*coupling_density),
+                            "seed": *seed,
+                            "perturbation_amplitude": bell_round6(*perturbation_amplitude),
+                            "perturbation_frequency": bell_round6(perturbation_frequency),
+                            "n_qubits": n_qubits,
+                            "state_dimension": dimension,
+                            "support_density": bell_round6(support_density),
+                            "low_grade_blade_concentration": bell_round6(low_grade_concentration),
+                            "observed_density": bell_round6(observed_density),
+                            "perturbed_observed_density": perturbed_observed_density,
+                            "density_threshold": bell_round6(threshold),
+                            "threshold_distance": bell_round6(threshold_distance),
+                            "perturbed_threshold_distance": perturbed_threshold_distance,
+                            "dense_fallback_active": dense_fallback_active,
+                            "perturbed_dense_fallback_active": perturbed_dense_fallback_active,
+                            "phase_relaxation_steps": phase_relaxation_steps,
+                            "torsion_hysteresis": torsion_hysteresis,
+                            "perturbation_volatility_index": perturbation_volatility_index,
+                        });
+                        let stable_hash = stable_sha256_hex(&stable_source)?;
+
+                        per_amplitude.push((
+                            amp_idx,
+                            DiracModeSweepPoint {
+                                state_model: state_model.to_string(),
+                                coupling_density: bell_round6(*coupling_density),
+                                seed: *seed,
+                                perturbation_amplitude: bell_round6(*perturbation_amplitude),
+                                perturbation_frequency: bell_round6(perturbation_frequency),
+                                n_qubits,
+                                state_dimension: dimension,
+                                support_density: bell_round6(support_density),
+                                low_grade_blade_concentration: bell_round6(low_grade_concentration),
+                                observed_density: bell_round6(observed_density),
+                                perturbed_observed_density,
+                                density_threshold: bell_round6(threshold),
+                                threshold_distance: bell_round6(threshold_distance),
+                                perturbed_threshold_distance,
+                                dense_fallback_active,
+                                perturbed_dense_fallback_active,
+                                phase_relaxation_steps,
+                                torsion_hysteresis,
+                                perturbation_volatility_index,
+                                stable_envelope_sha256: stable_hash,
+                            },
+                        ));
+                    }
+
+                    Ok((*density_idx, *seed_idx, per_amplitude))
+                },
+            )
+            .collect::<Result<Vec<_>, String>>()?
+    } else {
+        let mut out = Vec::<(usize, usize, Vec<(usize, DiracModeSweepPoint)>)>::new();
+        for (density_idx, seed_idx, coupling_density, seed) in jobs {
             let state = synthetic_density_state(dimension, coupling_density, seed, state_model)?;
             let (support_density, low_grade_concentration, observed_density) =
                 observed_dirac_density(&state, state_model);
             let threshold_distance = observed_density - threshold;
             let dense_fallback_active = observed_density >= threshold;
 
-            for &perturbation_amplitude in perturbation_amplitudes {
+            let mut per_amplitude = Vec::<(usize, DiracModeSweepPoint)>::new();
+            for (amp_idx, perturbation_amplitude) in perturbation_amplitudes.iter().enumerate() {
                 let (
                     perturbed_observed_density,
                     perturbed_threshold_distance,
@@ -1693,7 +1831,7 @@ pub fn dirac_mode_sweep_points_with_perturbation(
                     coupling_density,
                     seed,
                     state_model,
-                    perturbation_amplitude,
+                    *perturbation_amplitude,
                     perturbation_frequency,
                     threshold,
                 );
@@ -1703,7 +1841,7 @@ pub fn dirac_mode_sweep_points_with_perturbation(
                     "state_model": state_model,
                     "coupling_density": bell_round6(coupling_density),
                     "seed": seed,
-                    "perturbation_amplitude": bell_round6(perturbation_amplitude),
+                    "perturbation_amplitude": bell_round6(*perturbation_amplitude),
                     "perturbation_frequency": bell_round6(perturbation_frequency),
                     "n_qubits": n_qubits,
                     "state_dimension": dimension,
@@ -1722,33 +1860,54 @@ pub fn dirac_mode_sweep_points_with_perturbation(
                 });
                 let stable_hash = stable_sha256_hex(&stable_source)?;
 
-                points.push(DiracModeSweepPoint {
-                    state_model: state_model.to_string(),
-                    coupling_density: bell_round6(coupling_density),
-                    seed,
-                    perturbation_amplitude: bell_round6(perturbation_amplitude),
-                    perturbation_frequency: bell_round6(perturbation_frequency),
-                    n_qubits,
-                    state_dimension: dimension,
-                    support_density: bell_round6(support_density),
-                    low_grade_blade_concentration: bell_round6(low_grade_concentration),
-                    observed_density: bell_round6(observed_density),
-                    perturbed_observed_density,
-                    density_threshold: bell_round6(threshold),
-                    threshold_distance: bell_round6(threshold_distance),
-                    perturbed_threshold_distance,
-                    dense_fallback_active,
-                    perturbed_dense_fallback_active,
-                    phase_relaxation_steps,
-                    torsion_hysteresis,
-                    perturbation_volatility_index,
-                    stable_envelope_sha256: stable_hash,
-                });
+                per_amplitude.push((
+                    amp_idx,
+                    DiracModeSweepPoint {
+                        state_model: state_model.to_string(),
+                        coupling_density: bell_round6(coupling_density),
+                        seed,
+                        perturbation_amplitude: bell_round6(*perturbation_amplitude),
+                        perturbation_frequency: bell_round6(perturbation_frequency),
+                        n_qubits,
+                        state_dimension: dimension,
+                        support_density: bell_round6(support_density),
+                        low_grade_blade_concentration: bell_round6(low_grade_concentration),
+                        observed_density: bell_round6(observed_density),
+                        perturbed_observed_density,
+                        density_threshold: bell_round6(threshold),
+                        threshold_distance: bell_round6(threshold_distance),
+                        perturbed_threshold_distance,
+                        dense_fallback_active,
+                        perturbed_dense_fallback_active,
+                        phase_relaxation_steps,
+                        torsion_hysteresis,
+                        perturbation_volatility_index,
+                        stable_envelope_sha256: stable_hash,
+                    },
+                ));
             }
+            out.push((density_idx, seed_idx, per_amplitude));
+        }
+        out
+    };
+
+    let mut ordered = Vec::<(usize, usize, usize, DiracModeSweepPoint)>::new();
+    for (density_idx, seed_idx, mut per_amplitude) in grouped {
+        per_amplitude.sort_by(|a, b| a.0.cmp(&b.0));
+        for (amp_idx, point) in per_amplitude {
+            ordered.push((density_idx, seed_idx, amp_idx, point));
         }
     }
+    ordered.sort_by(|a, b| {
+        a.0.cmp(&b.0)
+            .then_with(|| a.1.cmp(&b.1))
+            .then_with(|| a.2.cmp(&b.2))
+    });
 
-    Ok(points)
+    Ok(ordered
+        .into_iter()
+        .map(|(_, _, _, point)| point)
+        .collect::<Vec<_>>())
 }
 
 #[allow(dead_code)]

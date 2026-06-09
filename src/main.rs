@@ -13752,6 +13752,7 @@ fn print_help(bin: &str) {
     println!("  {} quantum-register-scaffold [--n-qubits 4] [--pretty]", bin);
     println!("  {} bv --hidden 1011 [--mode structural|black-box] [--shots 1024] [--pretty]", bin);
     println!("  {} bell-state [--noise-factor 0.10] [--noise-seed 42] [--sweep-export json|csv] [--sweep-noise-factors 0.0,0.1,0.2] [--sweep-seeds 42,777] [--pretty]", bin);
+    println!("  {} shor [--factoring-target 15] [--base-a 2] [--max-base-retries 4] [--pretty]", bin);
     println!("  {} dirac-mode [--n-qubits 6] [--state-model uniform-random|contiguous-band|harmonic-stride|low-grade-bias|high-grade-bias] [--sweep-export json|csv] [--sweep-coupling-densities 0.02,0.08,0.12,0.2] [--sweep-seeds 42,777] [--perturbation-amplitudes 0.0,0.1,0.2] [--perturbation-frequency 8.0] [--summary] [--profile-report]", bin);
     println!("  {} dirac-annihilation [--n-qubits 6] [--profiles uniform-random,low-grade-bias,high-grade-bias,harmonic-stride] [--unwinding-steps 128] [--flux-coupling-density 0.40] [--sweep-export json|csv] [--output-prefix docs/demo/dirac-annihilation-dynamics]", bin);
     println!("  {} distributed-wave-harness [--epochs 64] [--replay-runs 5] [--sweep-export json|csv] [--pretty]", bin);
@@ -14521,6 +14522,35 @@ async fn main() {
                     std::process::exit(1);
                 }
             }
+        }
+        "shor" => {
+            let parsed = match quantum::cli::parse_shor_command_args(&args[2..]) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            };
+
+            let payload = match quantum::algorithms::shor::run_shor_geometric_report_with_retry(
+                parsed.factoring_target,
+                parsed.base_a,
+                parsed.max_base_retries,
+            ) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            };
+
+            let output = if parsed.pretty {
+                serde_json::to_string_pretty(&payload)
+            } else {
+                serde_json::to_string(&payload)
+            }
+            .expect("json serialization should succeed");
+            println!("{}", output);
         }
         "dirac-mode" => {
             let parsed = match quantum::cli::parse_dirac_mode_command_args(&args[2..]) {

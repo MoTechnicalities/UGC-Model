@@ -164,6 +164,102 @@ fn bv_cli_structural_mode_recovers_hidden_string() {
 }
 
 #[test]
+fn shor_cli_factors_15_in_geometric_scaffold() {
+    let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
+
+    let output = Command::new(bin)
+        .arg("shor")
+        .arg("--factoring-target")
+        .arg("15")
+        .arg("--base-a")
+        .arg("2")
+        .output()
+        .expect("shor command should run");
+
+    assert!(
+        output.status.success(),
+        "command failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let payload: Value = serde_json::from_slice(&output.stdout).expect("shor command should emit JSON output");
+    assert_eq!(
+        payload.get("object"),
+        Some(&Value::String("csif.quantum.shor.geometric_report".to_string()))
+    );
+    assert_eq!(payload.get("factoring_target"), Some(&Value::from(15)));
+
+    let factors = payload
+        .get("factors")
+        .and_then(Value::as_array)
+        .expect("factors should be array");
+    assert!(factors.iter().any(|v| v == &Value::from(3)));
+    assert!(factors.iter().any(|v| v == &Value::from(5)));
+}
+
+#[test]
+fn shor_cli_rejects_bad_target_value() {
+    let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
+
+    let output = Command::new(bin)
+        .arg("shor")
+        .arg("--factoring-target")
+        .arg("2")
+        .output()
+        .expect("shor command should run");
+
+    assert!(
+        !output.status.success(),
+        "command unexpectedly succeeded\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("invalid --factoring-target value"),
+        "stderr should explain bad target"
+    );
+}
+
+#[test]
+fn shor_cli_retries_when_first_base_has_no_nontrivial_factor() {
+    let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
+
+    let output = Command::new(bin)
+        .arg("shor")
+        .arg("--factoring-target")
+        .arg("21")
+        .arg("--base-a")
+        .arg("4")
+        .arg("--max-base-retries")
+        .arg("3")
+        .output()
+        .expect("shor command should run");
+
+    assert!(
+        output.status.success(),
+        "command failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let payload: Value = serde_json::from_slice(&output.stdout).expect("shor command should emit JSON output");
+    assert_eq!(payload.get("status"), Some(&Value::String("factored".to_string())));
+    assert_eq!(payload.get("base_a"), Some(&Value::from(4)));
+
+    let attempts = payload
+        .get("attempts")
+        .and_then(Value::as_array)
+        .expect("attempts should be array");
+    assert!(attempts.len() >= 2);
+    assert_eq!(attempts[0].get("base_a"), Some(&Value::from(4)));
+    assert_eq!(
+        attempts[0].get("status"),
+        Some(&Value::String("period_found_no_nontrivial_factor".to_string()))
+    );
+}
+
+#[test]
 fn bv_cli_black_box_mode_accepts_shot_override() {
     let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
 

@@ -53,6 +53,14 @@ pub struct DiracAnnihilationCommandArgs {
     pub output_prefix: Option<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ShorCommandArgs {
+    pub factoring_target: u64,
+    pub base_a: u64,
+    pub max_base_retries: u32,
+    pub pretty: bool,
+}
+
 fn parse_noise_factor_list_csv(value: &str) -> Result<Vec<f64>, String> {
     let mut values = Vec::<f64>::new();
     for item in value.split(',') {
@@ -591,6 +599,63 @@ pub fn parse_dirac_annihilation_command_args(args: &[String]) -> Result<DiracAnn
     })
 }
 
+pub fn parse_shor_command_args(args: &[String]) -> Result<ShorCommandArgs, String> {
+    let mut factoring_target = 15u64;
+    let mut base_a = 2u64;
+    let mut max_base_retries = 4u32;
+    let mut pretty = false;
+    let mut i = 0usize;
+
+    while i < args.len() {
+        match args[i].as_str() {
+            "--factoring-target" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--factoring-target requires a value".to_string());
+                };
+                factoring_target = match value.parse::<u64>() {
+                    Ok(v) if v >= 3 => v,
+                    _ => return Err(format!("invalid --factoring-target value: {}", value)),
+                };
+                i += 2;
+            }
+            "--base-a" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--base-a requires a value".to_string());
+                };
+                base_a = match value.parse::<u64>() {
+                    Ok(v) if v >= 2 => v,
+                    _ => return Err(format!("invalid --base-a value: {}", value)),
+                };
+                i += 2;
+            }
+            "--max-base-retries" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--max-base-retries requires a value".to_string());
+                };
+                max_base_retries = match value.parse::<u32>() {
+                    Ok(v) if v <= 32 => v,
+                    _ => return Err(format!("invalid --max-base-retries value: {}", value)),
+                };
+                i += 2;
+            }
+            "--pretty" => {
+                pretty = true;
+                i += 1;
+            }
+            other => {
+                return Err(format!("unknown shor option: {}", other));
+            }
+        }
+    }
+
+    Ok(ShorCommandArgs {
+        factoring_target,
+        base_a,
+        max_base_retries,
+        pretty,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -869,5 +934,44 @@ mod tests {
         let args = vec_args(&["--pretty"]);
         let err = parse_dirac_annihilation_command_args(&args).expect_err("parse should fail");
         assert_eq!(err, "unknown dirac-annihilation option: --pretty");
+    }
+
+    #[test]
+    fn shor_parser_accepts_target_and_base() {
+        let args = vec_args(&[
+            "--factoring-target",
+            "15",
+            "--base-a",
+            "2",
+            "--max-base-retries",
+            "6",
+            "--pretty",
+        ]);
+        let parsed = parse_shor_command_args(&args).expect("parse should succeed");
+        assert_eq!(parsed.factoring_target, 15);
+        assert_eq!(parsed.base_a, 2);
+        assert_eq!(parsed.max_base_retries, 6);
+        assert!(parsed.pretty);
+    }
+
+    #[test]
+    fn shor_parser_rejects_bad_target() {
+        let args = vec_args(&["--factoring-target", "2"]);
+        let err = parse_shor_command_args(&args).expect_err("parse should fail");
+        assert_eq!(err, "invalid --factoring-target value: 2");
+    }
+
+    #[test]
+    fn shor_parser_rejects_unknown_option() {
+        let args = vec_args(&["--mystery"]);
+        let err = parse_shor_command_args(&args).expect_err("parse should fail");
+        assert_eq!(err, "unknown shor option: --mystery");
+    }
+
+    #[test]
+    fn shor_parser_rejects_bad_retry_count() {
+        let args = vec_args(&["--max-base-retries", "999"]);
+        let err = parse_shor_command_args(&args).expect_err("parse should fail");
+        assert_eq!(err, "invalid --max-base-retries value: 999");
     }
 }
