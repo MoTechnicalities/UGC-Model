@@ -1,0 +1,1399 @@
+{
+  "object": "csif.quantum.dirac_mode.threshold_sweep.aggregate",
+  "schema_version": "csif_dirac_mode_threshold_sweep_aggregate_v1",
+  "generated_utc": "2026-06-09T13:43:28.003312+00:00",
+  "invocation": "python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6,7,8 --densities 0.02,0.08,0.10,0.12,0.14,0.2,0.3 --seeds 42,777,20260609 --output-prefix docs/demo/dirac-mode-threshold-sweep",
+  "computational_analog_label": "computational_schwinger_limit_analog",
+  "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+  "n_values": [
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "densities": [
+    0.02,
+    0.08,
+    0.1,
+    0.12,
+    0.14,
+    0.2,
+    0.3
+  ],
+  "seeds": [
+    42,
+    777,
+    20260609
+  ],
+  "rows": [
+    {
+      "n_qubits": 4,
+      "first_crossing_density": 0.12,
+      "spread_min": 0.12,
+      "spread_max": 0.12,
+      "spread": 0.0,
+      "crossing_seed_count": 3,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 41.482897
+    },
+    {
+      "n_qubits": 5,
+      "first_crossing_density": 0.12,
+      "spread_min": 0.12,
+      "spread_max": 0.12,
+      "spread": 0.0,
+      "crossing_seed_count": 3,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 38.651368
+    },
+    {
+      "n_qubits": 6,
+      "first_crossing_density": 0.12,
+      "spread_min": 0.12,
+      "spread_max": 0.12,
+      "spread": 0.0,
+      "crossing_seed_count": 3,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 49.331625
+    },
+    {
+      "n_qubits": 7,
+      "first_crossing_density": 0.14,
+      "spread_min": 0.14,
+      "spread_max": 0.14,
+      "spread": 0.0,
+      "crossing_seed_count": 3,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 57.105357
+    },
+    {
+      "n_qubits": 8,
+      "first_crossing_density": 0.14,
+      "spread_min": 0.14,
+      "spread_max": 0.14,
+      "spread": 0.0,
+      "crossing_seed_count": 3,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 112.421711
+    }
+  ],
+  "reports": [
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.019531,
+          "seed": 42,
+          "stable_envelope_sha256": "ba70088d8c7434b56d56bc70aa7fcb047aefdfd6675650824551f54170ae46e0",
+          "state_dimension": 256,
+          "threshold_distance": -0.100469
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.019531,
+          "seed": 777,
+          "stable_envelope_sha256": "e288201db9184887142dbb1e64895bc0f90cf1efb558672534144838d0aeb33d",
+          "state_dimension": 256,
+          "threshold_distance": -0.100469
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.019531,
+          "seed": 20260609,
+          "stable_envelope_sha256": "f67dafd26b109ede69dca7b1412c1de074c677db814dc3dc8ef4daf7bc0e7eec",
+          "state_dimension": 256,
+          "threshold_distance": -0.100469
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.078125,
+          "seed": 42,
+          "stable_envelope_sha256": "62b3d007360a760f3244c45fa4629a55218ac0179172e1263baf625a2c058b26",
+          "state_dimension": 256,
+          "threshold_distance": -0.041875
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.078125,
+          "seed": 777,
+          "stable_envelope_sha256": "a5e48e996a804fa875b3933723942764fbd839eef028727af8c27ec72a89e179",
+          "state_dimension": 256,
+          "threshold_distance": -0.041875
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.078125,
+          "seed": 20260609,
+          "stable_envelope_sha256": "58a4faf302f1db530005374d0e30afeffa37c99fedabb6701ef978a2a5a5832d",
+          "state_dimension": 256,
+          "threshold_distance": -0.041875
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.101563,
+          "seed": 42,
+          "stable_envelope_sha256": "2f6be1f49c90104a0e99c4c0bb7b7596eed12c1966df56a510705c63e9bb4e8f",
+          "state_dimension": 256,
+          "threshold_distance": -0.018437
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.101563,
+          "seed": 777,
+          "stable_envelope_sha256": "b3a8796f8dcb8cbb389c0588f2a990cdfa016fe1aef02390205d23e9e7549bda",
+          "state_dimension": 256,
+          "threshold_distance": -0.018437
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.101563,
+          "seed": 20260609,
+          "stable_envelope_sha256": "99b200e27ad65b5975a4ec5c315dd7575b325949700c9d496d19478fd220a8be",
+          "state_dimension": 256,
+          "threshold_distance": -0.018437
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.121094,
+          "seed": 42,
+          "stable_envelope_sha256": "e34b83c7b048f58eeb8ebb64f46c763e9fa3df17cfd49781947f3e37147bd2b3",
+          "state_dimension": 256,
+          "threshold_distance": 0.001094
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.121094,
+          "seed": 777,
+          "stable_envelope_sha256": "438e65e23b7297f01260711d337c13ed5348e95df21d77a982c79d305d05555e",
+          "state_dimension": 256,
+          "threshold_distance": 0.001094
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.121094,
+          "seed": 20260609,
+          "stable_envelope_sha256": "6e990b5ff85fa1aabcb90fd3d5ad06a9d6f04fd1f2e7b0267af07661aa8df3d8",
+          "state_dimension": 256,
+          "threshold_distance": 0.001094
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.140625,
+          "seed": 42,
+          "stable_envelope_sha256": "30890ae201eac1c8782a014b3fc031c03325951bc03142bfdb4129cefb2e2357",
+          "state_dimension": 256,
+          "threshold_distance": 0.020625
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.140625,
+          "seed": 777,
+          "stable_envelope_sha256": "95617494a8db54509146e7e3adcb1c2e71567bdda84746fb349363662e7ef643",
+          "state_dimension": 256,
+          "threshold_distance": 0.020625
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.140625,
+          "seed": 20260609,
+          "stable_envelope_sha256": "a1226cf0e388a36c3d61d89e69026f0cd9dca7da3f2452ea02b876ff33e3e403",
+          "state_dimension": 256,
+          "threshold_distance": 0.020625
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.199219,
+          "seed": 42,
+          "stable_envelope_sha256": "ae72595c201174ee285a6564f59d92f9d6580286a13d5acf6ffa87f3212817fd",
+          "state_dimension": 256,
+          "threshold_distance": 0.079219
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.199219,
+          "seed": 777,
+          "stable_envelope_sha256": "b28139842a0e580ca7d5db5bca3cf7b0977ceaea6b9a747a5ca31fd46f359562",
+          "state_dimension": 256,
+          "threshold_distance": 0.079219
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.199219,
+          "seed": 20260609,
+          "stable_envelope_sha256": "814abd9f5604b4652bb6231194ffcac88572e5526cd2b36e5084473a273791ea",
+          "state_dimension": 256,
+          "threshold_distance": 0.079219
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.300781,
+          "seed": 42,
+          "stable_envelope_sha256": "324fab32b3f8303c76e1dfc18a5c109654ec1f925accb45168f2a91ba7c63cfc",
+          "state_dimension": 256,
+          "threshold_distance": 0.180781
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.300781,
+          "seed": 777,
+          "stable_envelope_sha256": "fb1ed1b1399e2c6ca1407f803bb146a2a43f8d1db4703d9fd5d1a1c15043146d",
+          "state_dimension": 256,
+          "threshold_distance": 0.180781
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 4,
+          "observed_density": 0.300781,
+          "seed": 20260609,
+          "stable_envelope_sha256": "b4d3bdd4cd6ad8470a4b87306b81ad22d006dc2fa344707a28701fa095a1abac",
+          "state_dimension": 256,
+          "threshold_distance": 0.180781
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 3,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.12,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.12,
+        "per_seed_crossing_spread_min": 0.12,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.12,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.12,
+            "seed": 777
+          },
+          {
+            "first_crossing_density": 0.12,
+            "seed": 20260609
+          }
+        ]
+      },
+      "_wall_runtime_ms": 41.482897
+    },
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.019531,
+          "seed": 42,
+          "stable_envelope_sha256": "7bba10217b485bd0bd25f83e331551afd346e011f6cfee5945037c2df4b41284",
+          "state_dimension": 1024,
+          "threshold_distance": -0.100469
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.019531,
+          "seed": 777,
+          "stable_envelope_sha256": "577d7bfdf060abcc848499b994ffed30ed0cb85f247d52121b8ea882cb8aacf2",
+          "state_dimension": 1024,
+          "threshold_distance": -0.100469
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.019531,
+          "seed": 20260609,
+          "stable_envelope_sha256": "79786973efabb73183f6ee1ddd8d26f2e44c2e6d4e16b0a8bc75d3ada6186186",
+          "state_dimension": 1024,
+          "threshold_distance": -0.100469
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.080078,
+          "seed": 42,
+          "stable_envelope_sha256": "8eaa39c6a92c13b1c59627bb7e05a5c3731a9ee0d6985b5aa70a59b4b9b1f70c",
+          "state_dimension": 1024,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.080078,
+          "seed": 777,
+          "stable_envelope_sha256": "0f09612aa1b7edabcd03ddbf3db39e5caf095d94e03709a5c7da7561f608e8bc",
+          "state_dimension": 1024,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.080078,
+          "seed": 20260609,
+          "stable_envelope_sha256": "b93a822da62fe4f5cdfd325dd74d74ebca6e5197c5cc28e129530f0cc45bba87",
+          "state_dimension": 1024,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.099609,
+          "seed": 42,
+          "stable_envelope_sha256": "820347c75f45638b938ffe336557f0573953fc24471e8882c91d30e48798ed95",
+          "state_dimension": 1024,
+          "threshold_distance": -0.020391
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.099609,
+          "seed": 777,
+          "stable_envelope_sha256": "3aa049c32de50aebb540afc5dec42d345cc794fc4556723273b362adfd328400",
+          "state_dimension": 1024,
+          "threshold_distance": -0.020391
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.099609,
+          "seed": 20260609,
+          "stable_envelope_sha256": "421bf38610a4556131d932b120eb5ff3a05b45ec65dc007ba1f25836394f0548",
+          "state_dimension": 1024,
+          "threshold_distance": -0.020391
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.120117,
+          "seed": 42,
+          "stable_envelope_sha256": "d11ca780ee2b5b34a461a45f16e698266285414f0b188bc0e6feea95999569a8",
+          "state_dimension": 1024,
+          "threshold_distance": 0.000117
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.120117,
+          "seed": 777,
+          "stable_envelope_sha256": "9ebd38ea3069358725861a3e376829397f4955b38c9b39f6d1483c93a53c7576",
+          "state_dimension": 1024,
+          "threshold_distance": 0.000117
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.120117,
+          "seed": 20260609,
+          "stable_envelope_sha256": "0a634a05d042d89d7df8686e6cbdc04885d17f443b1845cc282ac31721d2de65",
+          "state_dimension": 1024,
+          "threshold_distance": 0.000117
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.139648,
+          "seed": 42,
+          "stable_envelope_sha256": "98ce8fabbfc39b5dfddb71629932741e124a4c77fe503be19e329d7005645b59",
+          "state_dimension": 1024,
+          "threshold_distance": 0.019648
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.139648,
+          "seed": 777,
+          "stable_envelope_sha256": "d267d40fb3234cd09630bf8c888ec4933aff406522f7422a275aeeca378f6426",
+          "state_dimension": 1024,
+          "threshold_distance": 0.019648
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.139648,
+          "seed": 20260609,
+          "stable_envelope_sha256": "b86d7b85db98f1f1b953c499655ce59e7a766abcab4d87f77c58ff597cf7780e",
+          "state_dimension": 1024,
+          "threshold_distance": 0.019648
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.200195,
+          "seed": 42,
+          "stable_envelope_sha256": "4846ee2c239ffd95dc47a337da1b6efd706d5bec70a69a3f549476400db9e854",
+          "state_dimension": 1024,
+          "threshold_distance": 0.080195
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.200195,
+          "seed": 777,
+          "stable_envelope_sha256": "fb22b26f7d20db4c8567daa000781d27e3f6d4debcdb991720d214e93ed99eb7",
+          "state_dimension": 1024,
+          "threshold_distance": 0.080195
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.200195,
+          "seed": 20260609,
+          "stable_envelope_sha256": "dd6b523dc0b290f39d6e6e4c0503c9eb285e5624f356240e3fd25e94e871f0d4",
+          "state_dimension": 1024,
+          "threshold_distance": 0.080195
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.299805,
+          "seed": 42,
+          "stable_envelope_sha256": "f96b60885c9a0374367aa30f2b72c30881bcd1d4e7221267939ef8472792b39f",
+          "state_dimension": 1024,
+          "threshold_distance": 0.179805
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.299805,
+          "seed": 777,
+          "stable_envelope_sha256": "793c342519ad512e6b10ffb541f34ba1ac111f8177483cecd7446c74842ea07a",
+          "state_dimension": 1024,
+          "threshold_distance": 0.179805
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 5,
+          "observed_density": 0.299805,
+          "seed": 20260609,
+          "stable_envelope_sha256": "ce684363a8cffe97dfe8ad56c71eab4f5dc98c46315f03bf5c639580f6f12216",
+          "state_dimension": 1024,
+          "threshold_distance": 0.179805
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 3,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.12,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.12,
+        "per_seed_crossing_spread_min": 0.12,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.12,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.12,
+            "seed": 777
+          },
+          {
+            "first_crossing_density": 0.12,
+            "seed": 20260609
+          }
+        ]
+      },
+      "_wall_runtime_ms": 38.651368
+    },
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.02002,
+          "seed": 42,
+          "stable_envelope_sha256": "703244e2b4360b73c68d7075b7ddae7a3b28430299d0d7e8527249d8e9a91e62",
+          "state_dimension": 4096,
+          "threshold_distance": -0.09998
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.02002,
+          "seed": 777,
+          "stable_envelope_sha256": "0e37e7510c708ad66f6c3107b219de171f1f26005eaeb9cc2bad1f2881a3f7aa",
+          "state_dimension": 4096,
+          "threshold_distance": -0.09998
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.02002,
+          "seed": 20260609,
+          "stable_envelope_sha256": "868e015c413a74f696cf683cbc41b31f5783d9872c15ddc33343a5a14f7acd5f",
+          "state_dimension": 4096,
+          "threshold_distance": -0.09998
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.080078,
+          "seed": 42,
+          "stable_envelope_sha256": "94c872d229151d28a648d08776998b0716e11c01390fffdb5c35e1c04e3f3b30",
+          "state_dimension": 4096,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.080078,
+          "seed": 777,
+          "stable_envelope_sha256": "27d72d7d992cbfd68dfefbc38705cdf859ee5ab04027eaf10114121040b44043",
+          "state_dimension": 4096,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.080078,
+          "seed": 20260609,
+          "stable_envelope_sha256": "86b712b7f84082c2ec437516cc46c501fb4b3a31632a2e3d9eda981f9b3c0f73",
+          "state_dimension": 4096,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.100098,
+          "seed": 42,
+          "stable_envelope_sha256": "5aa0c30994e20b6ea8534886eb99e074838b79901062f39473a9fb5317eea85e",
+          "state_dimension": 4096,
+          "threshold_distance": -0.019902
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.100098,
+          "seed": 777,
+          "stable_envelope_sha256": "d7030519cb9b0924b0248da85e1c061ef67eb2282a64898291891e0069a2bf0f",
+          "state_dimension": 4096,
+          "threshold_distance": -0.019902
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.100098,
+          "seed": 20260609,
+          "stable_envelope_sha256": "8e6cb3964a2718a18f2eca2250be6ba48e54f553a35d21f189835e1e7315b129",
+          "state_dimension": 4096,
+          "threshold_distance": -0.019902
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.120117,
+          "seed": 42,
+          "stable_envelope_sha256": "a31e32678dd637718d1c6e474469428408dd80552752ec773bb7b7da367dc891",
+          "state_dimension": 4096,
+          "threshold_distance": 0.000117
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.120117,
+          "seed": 777,
+          "stable_envelope_sha256": "109ddd6174137d0708e0802017f79cb4addebc8cecb55e51d8689ffdb534c436",
+          "state_dimension": 4096,
+          "threshold_distance": 0.000117
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.120117,
+          "seed": 20260609,
+          "stable_envelope_sha256": "13611ec2f6154ccf1fc7e640c58139298669ea932affa6ba89e86cf787fc78b9",
+          "state_dimension": 4096,
+          "threshold_distance": 0.000117
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.139893,
+          "seed": 42,
+          "stable_envelope_sha256": "71e2ab0e1ebfda15e028ea3e5036d625c48dc8d7d60b378493260a406467ee6d",
+          "state_dimension": 4096,
+          "threshold_distance": 0.019893
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.139893,
+          "seed": 777,
+          "stable_envelope_sha256": "24e17b384ec7b1fce3762aca16f4e8bcff31bab6784e0c3e2839a6f1838f8932",
+          "state_dimension": 4096,
+          "threshold_distance": 0.019893
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.139893,
+          "seed": 20260609,
+          "stable_envelope_sha256": "4a219ccee3c7faf2029d25bdda0a62cef721c7ab482ca319c3185eeab3d4ccbb",
+          "state_dimension": 4096,
+          "threshold_distance": 0.019893
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.199951,
+          "seed": 42,
+          "stable_envelope_sha256": "5b2deb69d55d0290b9ff82f350debe0379edef247d43812ba1f882039631d32b",
+          "state_dimension": 4096,
+          "threshold_distance": 0.079951
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.199951,
+          "seed": 777,
+          "stable_envelope_sha256": "f75e7c0831636888acdc56e206d2f9728e8809ea16625ac65a5015e65270cf42",
+          "state_dimension": 4096,
+          "threshold_distance": 0.079951
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.199951,
+          "seed": 20260609,
+          "stable_envelope_sha256": "ba8b8e12e1152fa2657038d7d891382d25d8af53be531e345ae7f6d3a0813272",
+          "state_dimension": 4096,
+          "threshold_distance": 0.079951
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.300049,
+          "seed": 42,
+          "stable_envelope_sha256": "613e9505bf94c94905be7604e744f39bfa487fb7539007f379388fae1c5bb0b9",
+          "state_dimension": 4096,
+          "threshold_distance": 0.180049
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.300049,
+          "seed": 777,
+          "stable_envelope_sha256": "4b815ed84321a466aa934d94b8a9fc293a0882ff032315557c766196f08522ed",
+          "state_dimension": 4096,
+          "threshold_distance": 0.180049
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 6,
+          "observed_density": 0.300049,
+          "seed": 20260609,
+          "stable_envelope_sha256": "010e2817a900279d1dacc1cd107e77d7dcfc15c51c8f129e4c219956b36dc14a",
+          "state_dimension": 4096,
+          "threshold_distance": 0.180049
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 3,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.12,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.12,
+        "per_seed_crossing_spread_min": 0.12,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.12,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.12,
+            "seed": 777
+          },
+          {
+            "first_crossing_density": 0.12,
+            "seed": 20260609
+          }
+        ]
+      },
+      "_wall_runtime_ms": 49.331625
+    },
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.02002,
+          "seed": 42,
+          "stable_envelope_sha256": "2d7958480dbc3fc44e7d76fc9fd3efcffcc6fc7f31da2a5d2c214ed3c5fc8469",
+          "state_dimension": 16384,
+          "threshold_distance": -0.09998
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.02002,
+          "seed": 777,
+          "stable_envelope_sha256": "38b4b406c5a607ddb3aeb67bef53325962a7e94e4660518e2be049ccde102dd0",
+          "state_dimension": 16384,
+          "threshold_distance": -0.09998
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.02002,
+          "seed": 20260609,
+          "stable_envelope_sha256": "144f7ce73686d6f8473b50011e05021a140ca9afa98d89c9155079b8601183fc",
+          "state_dimension": 16384,
+          "threshold_distance": -0.09998
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.080017,
+          "seed": 42,
+          "stable_envelope_sha256": "837e1aa102e79c498936804b91cc14b15ad4a44a5204cd14e1f8ec362aa519e0",
+          "state_dimension": 16384,
+          "threshold_distance": -0.039983
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.080017,
+          "seed": 777,
+          "stable_envelope_sha256": "2c97e0dae525ebc984e45d90a15a2610b767462b446dea08fdb531b2f635e658",
+          "state_dimension": 16384,
+          "threshold_distance": -0.039983
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.080017,
+          "seed": 20260609,
+          "stable_envelope_sha256": "db569acb8623501b5b39cf36ed22f43512069b95089d3ac6fb290d390f31f596",
+          "state_dimension": 16384,
+          "threshold_distance": -0.039983
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.099976,
+          "seed": 42,
+          "stable_envelope_sha256": "cd612b453b65dfbc0f19af800162e712d348200531644146ac9190c961680de6",
+          "state_dimension": 16384,
+          "threshold_distance": -0.020024
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.099976,
+          "seed": 777,
+          "stable_envelope_sha256": "2e7f926c07983566dc09bb93d0d278793226bba65384b00dab0cc0093759e073",
+          "state_dimension": 16384,
+          "threshold_distance": -0.020024
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.099976,
+          "seed": 20260609,
+          "stable_envelope_sha256": "170cb5e60e5eb83163199309c1b04e78e344204b75b36eb5f0125fbe98eba3a5",
+          "state_dimension": 16384,
+          "threshold_distance": -0.020024
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.119995,
+          "seed": 42,
+          "stable_envelope_sha256": "d79c8e9923378f344d8232ff92e32b320d97b173600cbd8c0b06624ba7c53c7f",
+          "state_dimension": 16384,
+          "threshold_distance": -5e-06
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.119995,
+          "seed": 777,
+          "stable_envelope_sha256": "fabb071d1704a2445fb993531f5859362a613b82a03f341bbc9a009d627dfe61",
+          "state_dimension": 16384,
+          "threshold_distance": -5e-06
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.119995,
+          "seed": 20260609,
+          "stable_envelope_sha256": "a7b6f1e4c49114e4c270859045109c5d38f78f7653d724d44fa7d36324540863",
+          "state_dimension": 16384,
+          "threshold_distance": -5e-06
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.140015,
+          "seed": 42,
+          "stable_envelope_sha256": "f2cffe80c6ee59c35904d2a979fd127c395c23452675e6b59b2d5bcbedbe13b1",
+          "state_dimension": 16384,
+          "threshold_distance": 0.020015
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.140015,
+          "seed": 777,
+          "stable_envelope_sha256": "bbd66135e34a1aa36a713a13b8a0c05b3083933afc7b56bad2765fd63719d465",
+          "state_dimension": 16384,
+          "threshold_distance": 0.020015
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.140015,
+          "seed": 20260609,
+          "stable_envelope_sha256": "b880e1216070e08826836e97c200339d64cd00f43415c5c1411bc1617cb8206c",
+          "state_dimension": 16384,
+          "threshold_distance": 0.020015
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.200012,
+          "seed": 42,
+          "stable_envelope_sha256": "04d30e7413b53b1e3d4cf442c3e2fe07301956085b684ff1aa9a3973624d22d4",
+          "state_dimension": 16384,
+          "threshold_distance": 0.080012
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.200012,
+          "seed": 777,
+          "stable_envelope_sha256": "f9a973db4bdf5f8df25801b6035c550b9b63bf4e5e729b34bc1ea57a7396660d",
+          "state_dimension": 16384,
+          "threshold_distance": 0.080012
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.200012,
+          "seed": 20260609,
+          "stable_envelope_sha256": "8e351419eb3d51be22a86046e5c4c8a795128a2e708c81cb6c6b2638227e1343",
+          "state_dimension": 16384,
+          "threshold_distance": 0.080012
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.299988,
+          "seed": 42,
+          "stable_envelope_sha256": "8c08c0a5865e867d35728bdbc30853e7519d530f318737bd5de8481294ca9b94",
+          "state_dimension": 16384,
+          "threshold_distance": 0.179988
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.299988,
+          "seed": 777,
+          "stable_envelope_sha256": "be3d51401a9ea2550017a13eb42ca7aad086bbaa97cda36b03705848fd9b33af",
+          "state_dimension": 16384,
+          "threshold_distance": 0.179988
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 7,
+          "observed_density": 0.299988,
+          "seed": 20260609,
+          "stable_envelope_sha256": "874fd5199303dd04a1e3148d580d79636460054f2e3fa7aac531a838200a8203",
+          "state_dimension": 16384,
+          "threshold_distance": 0.179988
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 3,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.14,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.14,
+        "per_seed_crossing_spread_min": 0.14,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.14,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.14,
+            "seed": 777
+          },
+          {
+            "first_crossing_density": 0.14,
+            "seed": 20260609
+          }
+        ]
+      },
+      "_wall_runtime_ms": 57.105357
+    },
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.020004,
+          "seed": 42,
+          "stable_envelope_sha256": "73e7250ef8e867ba9b91901eff89f92d7ee135373bdb2f41e4c35e8eb6ff66b1",
+          "state_dimension": 65536,
+          "threshold_distance": -0.099996
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.020004,
+          "seed": 777,
+          "stable_envelope_sha256": "74609ef9addc3f5ea071ae1f48a14804d7aa278caa04a730f29da341d7ef76fa",
+          "state_dimension": 65536,
+          "threshold_distance": -0.099996
+        },
+        {
+          "coupling_density": 0.02,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.020004,
+          "seed": 20260609,
+          "stable_envelope_sha256": "2dd8fccba0c7d24af47e1a3c696a1dfb444857b56309ee7389968a3942dee658",
+          "state_dimension": 65536,
+          "threshold_distance": -0.099996
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.080002,
+          "seed": 42,
+          "stable_envelope_sha256": "43b840ae534fb28e297f9a9b18300215d3a5437a9c3e0dab16304b0abe6ef633",
+          "state_dimension": 65536,
+          "threshold_distance": -0.039998
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.080002,
+          "seed": 777,
+          "stable_envelope_sha256": "82d53ef60a7957722ad24a4c2c89b8876e8858b3568b99dd755f9d505c55a25a",
+          "state_dimension": 65536,
+          "threshold_distance": -0.039998
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.080002,
+          "seed": 20260609,
+          "stable_envelope_sha256": "9db2f2297814a415ebfab1b28794190bf79f5ce3827a334a5b104b8b2283eba8",
+          "state_dimension": 65536,
+          "threshold_distance": -0.039998
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.100006,
+          "seed": 42,
+          "stable_envelope_sha256": "cfa96348f77baf8ff10f34058d704fc0da17b99c824a8d31d3ab85fb1d15a6c4",
+          "state_dimension": 65536,
+          "threshold_distance": -0.019994
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.100006,
+          "seed": 777,
+          "stable_envelope_sha256": "211127c395129ecb2e8e999ad7539414777bdf89ed48be8aa230dddd8507608b",
+          "state_dimension": 65536,
+          "threshold_distance": -0.019994
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.100006,
+          "seed": 20260609,
+          "stable_envelope_sha256": "d674f571beb76c692c76e647795f68088deee9a385c6b682e997b1515062df2e",
+          "state_dimension": 65536,
+          "threshold_distance": -0.019994
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.119995,
+          "seed": 42,
+          "stable_envelope_sha256": "27cd0b872c1896205f8dd5aaddffe43effeead3397b91fc66d7c07d0f9fd856a",
+          "state_dimension": 65536,
+          "threshold_distance": -5e-06
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.119995,
+          "seed": 777,
+          "stable_envelope_sha256": "8884417ae236c3308f974481c4e97b797f65e1ce95323f502910bf79f0c1cce8",
+          "state_dimension": 65536,
+          "threshold_distance": -5e-06
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.119995,
+          "seed": 20260609,
+          "stable_envelope_sha256": "6015fd35d0aaa553f827f27ef49d10b4553b8a07ad024665a871a592deb5de8f",
+          "state_dimension": 65536,
+          "threshold_distance": -5e-06
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.139999,
+          "seed": 42,
+          "stable_envelope_sha256": "37fcc371bb22daa3d3e0da3d72eb55701340c8e78cd93f77546e87319743ee02",
+          "state_dimension": 65536,
+          "threshold_distance": 0.019999
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.139999,
+          "seed": 777,
+          "stable_envelope_sha256": "d48754c9aeb9e8003ddca1e5c577267ba23dc45b0669aa9c9d7c9daea74c30f2",
+          "state_dimension": 65536,
+          "threshold_distance": 0.019999
+        },
+        {
+          "coupling_density": 0.14,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.139999,
+          "seed": 20260609,
+          "stable_envelope_sha256": "d4919235f022d0788f0edef6c9095a58b33a78504758f1d98d16640289e75917",
+          "state_dimension": 65536,
+          "threshold_distance": 0.019999
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.199997,
+          "seed": 42,
+          "stable_envelope_sha256": "f6dc3929bc01a36618d355a266149162f2aaff1240cd104e7599f916faf30456",
+          "state_dimension": 65536,
+          "threshold_distance": 0.079997
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.199997,
+          "seed": 777,
+          "stable_envelope_sha256": "4860d17a2f7a9d45d6db24ede6b2f04509f55af44e387cc066452ef7785f67c6",
+          "state_dimension": 65536,
+          "threshold_distance": 0.079997
+        },
+        {
+          "coupling_density": 0.2,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.199997,
+          "seed": 20260609,
+          "stable_envelope_sha256": "8de84cd31cc5e7997f7888ac71f43a1832b2422f73f612271a968448cae3f75e",
+          "state_dimension": 65536,
+          "threshold_distance": 0.079997
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.300003,
+          "seed": 42,
+          "stable_envelope_sha256": "1b570d5799e0fc6449abb7569732bb56a36875cd2922758aa4d719d679377877",
+          "state_dimension": 65536,
+          "threshold_distance": 0.180003
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.300003,
+          "seed": 777,
+          "stable_envelope_sha256": "cfe14986d5a39912dec7c079cfc0112f686b2e2b3795d0d27ce15d9ce0d094a1",
+          "state_dimension": 65536,
+          "threshold_distance": 0.180003
+        },
+        {
+          "coupling_density": 0.3,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "n_qubits": 8,
+          "observed_density": 0.300003,
+          "seed": 20260609,
+          "stable_envelope_sha256": "00bced2dfb3965ef22de7f2f1ecb38a5f9c85a147eb799eb0fec415887a8f04d",
+          "state_dimension": 65536,
+          "threshold_distance": 0.180003
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 3,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.14,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.14,
+        "per_seed_crossing_spread_min": 0.14,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.14,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.14,
+            "seed": 777
+          },
+          {
+            "first_crossing_density": 0.14,
+            "seed": 20260609
+          }
+        ]
+      },
+      "_wall_runtime_ms": 112.421711
+    }
+  ],
+  "outputs": {
+    "json_report_path": "docs/demo/dirac-mode-threshold-sweep.json",
+    "csv_report_path": "docs/demo/dirac-mode-threshold-sweep.csv",
+    "markdown_report_path": "docs/demo/dirac-mode-threshold-sweep.md",
+    "plot_svg_path": "docs/demo/dirac-mode-threshold-sweep.svg"
+  }
+}

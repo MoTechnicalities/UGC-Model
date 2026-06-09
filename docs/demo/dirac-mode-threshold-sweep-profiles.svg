@@ -1,0 +1,44 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='960' height='540' viewBox='0 0 960 540'>
+<rect x='0' y='0' width='100%' height='100%' fill='white'/>
+<text x='90' y='24' font-family='monospace' font-size='14'>UGC Dirac Threshold Sweep: n_qubits vs first crossing density by state model</text>
+<line x1='90' y1='470' x2='930' y2='470' stroke='black'/>
+<line x1='90' y1='40' x2='90' y2='470' stroke='black'/>
+<line x1='90.00' y1='470.00' x2='90.00' y2='470.00' stroke='#9ecae1' stroke-width='6' stroke-linecap='round'/>
+<circle cx='90.00' cy='470.00' r='5' fill='#08519c'/>
+<text x='90.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>5</text>
+<line x1='510.00' y1='470.00' x2='510.00' y2='470.00' stroke='#9ecae1' stroke-width='6' stroke-linecap='round'/>
+<circle cx='510.00' cy='470.00' r='5' fill='#08519c'/>
+<text x='510.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>6</text>
+<line x1='930.00' y1='40.00' x2='930.00' y2='40.00' stroke='#9ecae1' stroke-width='6' stroke-linecap='round'/>
+<circle cx='930.00' cy='40.00' r='5' fill='#08519c'/>
+<text x='930.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>7</text>
+<line x1='90.00' y1='470.00' x2='90.00' y2='470.00' stroke='#fcbba1' stroke-width='6' stroke-linecap='round'/>
+<circle cx='90.00' cy='470.00' r='5' fill='#a50f15'/>
+<text x='90.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>5</text>
+<line x1='510.00' y1='470.00' x2='510.00' y2='470.00' stroke='#fcbba1' stroke-width='6' stroke-linecap='round'/>
+<circle cx='510.00' cy='470.00' r='5' fill='#a50f15'/>
+<text x='510.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>6</text>
+<line x1='930.00' y1='40.00' x2='930.00' y2='40.00' stroke='#fcbba1' stroke-width='6' stroke-linecap='round'/>
+<circle cx='930.00' cy='40.00' r='5' fill='#a50f15'/>
+<text x='930.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>7</text>
+<line x1='90.00' y1='470.00' x2='90.00' y2='470.00' stroke='#a1d99b' stroke-width='6' stroke-linecap='round'/>
+<circle cx='90.00' cy='470.00' r='5' fill='#006d2c'/>
+<text x='90.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>5</text>
+<line x1='510.00' y1='470.00' x2='510.00' y2='470.00' stroke='#a1d99b' stroke-width='6' stroke-linecap='round'/>
+<circle cx='510.00' cy='470.00' r='5' fill='#006d2c'/>
+<text x='510.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>6</text>
+<line x1='930.00' y1='40.00' x2='930.00' y2='40.00' stroke='#a1d99b' stroke-width='6' stroke-linecap='round'/>
+<circle cx='930.00' cy='40.00' r='5' fill='#006d2c'/>
+<text x='930.00' y='490' text-anchor='middle' font-family='monospace' font-size='10'>7</text>
+<line x1='85' y1='470.00' x2='90' y2='470.00' stroke='#666'/>
+<text x='82' y='473.00' text-anchor='end' font-family='monospace' font-size='10'>0.12</text>
+<text x='510.00' y='520' text-anchor='middle' font-family='monospace' font-size='12'>n_qubits</text>
+<text transform='translate(24 255.00) rotate(-90)' text-anchor='middle' font-family='monospace' font-size='12'>first_crossing_density (error bar = per-seed spread)</text>
+<rect x='110' y='52' width='240' height='76' fill='white' stroke='#cccccc'/>
+<circle cx='122' cy='70' r='4' fill='#a50f15'/>
+<text x='134' y='74' font-family='monospace' font-size='11'>contiguous-band</text>
+<circle cx='122' cy='92' r='4' fill='#006d2c'/>
+<text x='134' y='96' font-family='monospace' font-size='11'>harmonic-stride</text>
+<circle cx='122' cy='114' r='4' fill='#08519c'/>
+<text x='134' y='118' font-family='monospace' font-size='11'>uniform-random</text>
+</svg>

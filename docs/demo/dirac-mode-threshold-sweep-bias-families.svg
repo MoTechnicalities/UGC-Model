@@ -1,0 +1,64 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='730' height='350' viewBox='0 0 730 350'>
+<rect x='0' y='0' width='100%' height='100%' fill='white'/>
+<text x='70' y='24' font-family='monospace' font-size='14'>UGC Dirac Threshold Sweep: small multiples by n_qubits</text>
+<rect x='70' y='50' width='320' height='240' fill='none' stroke='#dddddd'/>
+<text x='78' y='66' font-family='monospace' font-size='12'>n=5</text>
+<line x1='110.0' y1='256.0' x2='376.0' y2='256.0' stroke='black'/>
+<line x1='110.0' y1='74.0' x2='110.0' y2='256.0' stroke='black'/>
+<line x1='106.0' y1='256.00' x2='110.0' y2='256.00' stroke='#666'/>
+<text x='103.0' y='259.00' text-anchor='end' font-family='monospace' font-size='9'>0.08</text>
+<line x1='106.0' y1='233.25' x2='110.0' y2='233.25' stroke='#666'/>
+<text x='103.0' y='236.25' text-anchor='end' font-family='monospace' font-size='9'>0.12</text>
+<line x1='106.0' y1='210.50' x2='110.0' y2='210.50' stroke='#666'/>
+<text x='103.0' y='213.50' text-anchor='end' font-family='monospace' font-size='9'>0.16</text>
+<line x1='106.0' y1='187.75' x2='110.0' y2='187.75' stroke='#666'/>
+<text x='103.0' y='190.75' text-anchor='end' font-family='monospace' font-size='9'>0.20</text>
+<line x1='106.0' y1='165.00' x2='110.0' y2='165.00' stroke='#666'/>
+<text x='103.0' y='168.00' text-anchor='end' font-family='monospace' font-size='9'>0.24</text>
+<line x1='106.0' y1='119.50' x2='110.0' y2='119.50' stroke='#666'/>
+<text x='103.0' y='122.50' text-anchor='end' font-family='monospace' font-size='9'>0.32</text>
+<line x1='106.0' y1='74.00' x2='110.0' y2='74.00' stroke='#666'/>
+<text x='103.0' y='77.00' text-anchor='end' font-family='monospace' font-size='9'>0.40</text>
+<text x='154.33' y='272.00' text-anchor='middle' font-family='monospace' font-size='9'>high-grade-bias</text>
+<line x1='154.33' y1='74.00' x2='154.33' y2='74.00' stroke='#dfc27d' stroke-width='6' stroke-linecap='round'/>
+<circle cx='154.33' cy='74.00' r='5' fill='#8c510a'/>
+<text x='162.33' y='68.00' font-family='monospace' font-size='9' fill='#8c510a'>Δ+0.28 R3.33x</text>
+<text x='243.00' y='272.00' text-anchor='middle' font-family='monospace' font-size='9'>low-grade-bias</text>
+<line x1='243.00' y1='256.00' x2='243.00' y2='256.00' stroke='#dadaeb' stroke-width='6' stroke-linecap='round'/>
+<circle cx='243.00' cy='256.00' r='5' fill='#54278f'/>
+<text x='251.00' y='250.00' font-family='monospace' font-size='9' fill='#54278f'>Δ-0.04 R0.67x</text>
+<text x='331.67' y='272.00' text-anchor='middle' font-family='monospace' font-size='9'>uniform-random</text>
+<line x1='331.67' y1='233.25' x2='331.67' y2='233.25' stroke='#9ecae1' stroke-width='6' stroke-linecap='round'/>
+<circle cx='331.67' cy='233.25' r='5' fill='#08519c'/>
+<rect x='390' y='50' width='320' height='240' fill='none' stroke='#dddddd'/>
+<text x='398' y='66' font-family='monospace' font-size='12'>n=6</text>
+<line x1='430.0' y1='256.0' x2='696.0' y2='256.0' stroke='black'/>
+<line x1='430.0' y1='74.0' x2='430.0' y2='256.0' stroke='black'/>
+<line x1='426.0' y1='256.00' x2='430.0' y2='256.00' stroke='#666'/>
+<line x1='426.0' y1='233.25' x2='430.0' y2='233.25' stroke='#666'/>
+<line x1='426.0' y1='210.50' x2='430.0' y2='210.50' stroke='#666'/>
+<line x1='426.0' y1='187.75' x2='430.0' y2='187.75' stroke='#666'/>
+<line x1='426.0' y1='165.00' x2='430.0' y2='165.00' stroke='#666'/>
+<line x1='426.0' y1='119.50' x2='430.0' y2='119.50' stroke='#666'/>
+<line x1='426.0' y1='74.00' x2='430.0' y2='74.00' stroke='#666'/>
+<text x='474.33' y='272.00' text-anchor='middle' font-family='monospace' font-size='9'>high-grade-bias</text>
+<line x1='474.33' y1='74.00' x2='474.33' y2='74.00' stroke='#dfc27d' stroke-width='6' stroke-linecap='round'/>
+<circle cx='474.33' cy='74.00' r='5' fill='#8c510a'/>
+<text x='482.33' y='68.00' font-family='monospace' font-size='9' fill='#8c510a'>Δ+0.28 R3.33x</text>
+<text x='563.00' y='272.00' text-anchor='middle' font-family='monospace' font-size='9'>low-grade-bias</text>
+<line x1='563.00' y1='244.63' x2='563.00' y2='244.63' stroke='#dadaeb' stroke-width='6' stroke-linecap='round'/>
+<circle cx='563.00' cy='244.63' r='5' fill='#54278f'/>
+<text x='571.00' y='238.63' font-family='monospace' font-size='9' fill='#54278f'>Δ-0.02 R0.83x</text>
+<text x='651.67' y='272.00' text-anchor='middle' font-family='monospace' font-size='9'>uniform-random</text>
+<line x1='651.67' y1='233.25' x2='651.67' y2='233.25' stroke='#9ecae1' stroke-width='6' stroke-linecap='round'/>
+<circle cx='651.67' cy='233.25' r='5' fill='#08519c'/>
+<text x='365.00' y='330' text-anchor='middle' font-family='monospace' font-size='12'>state model / rotor profile</text>
+<text transform='translate(24 175.00) rotate(-90)' text-anchor='middle' font-family='monospace' font-size='12'>first_crossing_density (error bar = per-seed spread)</text>
+<rect x='70' y='26' width='280' height='76' fill='white' stroke='#cccccc'/>
+<circle cx='82' cy='44' r='4' fill='#8c510a'/>
+<text x='94' y='48' font-family='monospace' font-size='11'>high-grade-bias (avg Δ+0.28, avg R3.33x)</text>
+<circle cx='82' cy='66' r='4' fill='#54278f'/>
+<text x='94' y='70' font-family='monospace' font-size='11'>low-grade-bias (avg Δ-0.03, avg R0.75x)</text>
+<circle cx='82' cy='88' r='4' fill='#08519c'/>
+<text x='94' y='92' font-family='monospace' font-size='11'>uniform-random (baseline)</text>
+</svg>

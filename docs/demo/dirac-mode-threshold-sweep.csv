@@ -1,0 +1,6 @@
+n_qubits,first_crossing_density,spread_min,spread_max,spread,crossing_seed_count,density_threshold,wall_runtime_ms
+4,0.12,0.12,0.12,0.0,3,0.12,41.482897
+5,0.12,0.12,0.12,0.0,3,0.12,38.651368
+6,0.12,0.12,0.12,0.0,3,0.12,49.331625
+7,0.14,0.14,0.14,0.0,3,0.12,57.105357
+8,0.14,0.14,0.14,0.0,3,0.12,112.421711

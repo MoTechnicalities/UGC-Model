@@ -13750,6 +13750,10 @@ fn print_help(bin: &str) {
     println!("  {} quantum-suite-native [--pretty]", bin);
     println!("  {} quantum-suite-compare [--python python3] [--pretty]", bin);
     println!("  {} quantum-register-scaffold [--n-qubits 4] [--pretty]", bin);
+    println!("  {} bv --hidden 1011 [--mode structural|black-box] [--shots 1024] [--pretty]", bin);
+    println!("  {} bell-state [--noise-factor 0.10] [--noise-seed 42] [--sweep-export json|csv] [--sweep-noise-factors 0.0,0.1,0.2] [--sweep-seeds 42,777] [--pretty]", bin);
+    println!("  {} dirac-mode [--n-qubits 6] [--state-model uniform-random|contiguous-band|harmonic-stride|low-grade-bias|high-grade-bias] [--sweep-export json|csv] [--sweep-coupling-densities 0.02,0.08,0.12,0.2] [--sweep-seeds 42,777] [--perturbation-amplitudes 0.0,0.1,0.2] [--perturbation-frequency 8.0] [--summary] [--profile-report]", bin);
+    println!("  {} distributed-wave-harness [--epochs 64] [--replay-runs 5] [--sweep-export json|csv] [--pretty]", bin);
 }
 
 fn percentile_ms(samples_ms: &[f64], pct: f64) -> f64 {
@@ -14421,6 +14425,182 @@ async fn main() {
                     std::process::exit(1);
                 }
             }
+        }
+        "bv" => {
+            let parsed = match quantum::cli::parse_bv_command_args(&args[2..]) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            };
+
+            let payload = match parsed.mode.as_str() {
+                "structural" => quantum::register::run_bernstein_vazirani(&parsed.hidden),
+                "black-box" => {
+                    if parsed.shots == quantum::register::DEFAULT_BV_BLACK_BOX_SHOTS {
+                        quantum::register::run_bernstein_vazirani_black_box(&parsed.hidden)
+                    } else {
+                        quantum::register::run_bernstein_vazirani_black_box_with_shots(
+                            &parsed.hidden,
+                            parsed.shots,
+                        )
+                    }
+                }
+                other => Err(format!("unsupported bv mode: {}", other)),
+            };
+
+            match payload {
+                Ok(payload) => {
+                    let output = if parsed.pretty {
+                        serde_json::to_string_pretty(&payload)
+                    } else {
+                        serde_json::to_string(&payload)
+                    }
+                    .expect("json serialization should succeed");
+                    println!("{}", output);
+                }
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "bell-state" => {
+            let parsed = match quantum::cli::parse_bell_state_command_args(&args[2..]) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            };
+
+            if let Some(format) = parsed.sweep_export.as_deref() {
+                let default_noise = vec![0.0, 0.1, 0.2];
+                let default_seeds = vec![42u64, 777u64, 20260609u64];
+                let noise_factors = if parsed.sweep_noise_factors.is_empty() {
+                    &default_noise
+                } else {
+                    &parsed.sweep_noise_factors
+                };
+                let seeds = if parsed.sweep_seeds.is_empty() {
+                    &default_seeds
+                } else {
+                    &parsed.sweep_seeds
+                };
+
+                let output = match quantum::register::bell_state_sweep_export(format, noise_factors, seeds) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        eprintln!("{}", err);
+                        std::process::exit(1);
+                    }
+                };
+                println!("{}", output);
+                return;
+            }
+
+            let error_model = parsed.noise_factor.map(|factor| quantum::register::ErrorModel {
+                torsion_noise_factor: factor,
+                seed: parsed.noise_seed,
+            });
+
+            match quantum::register::bell_state_report(error_model) {
+                Ok(payload) => {
+                    let output = if parsed.pretty {
+                        serde_json::to_string_pretty(&payload)
+                    } else {
+                        serde_json::to_string(&payload)
+                    }
+                    .expect("json serialization should succeed");
+                    println!("{}", output);
+                }
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            }
+        }
+        "dirac-mode" => {
+            let parsed = match quantum::cli::parse_dirac_mode_command_args(&args[2..]) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            };
+
+            let format = parsed.sweep_export.as_deref().unwrap_or("json");
+            let default_densities = vec![0.02, 0.08, 0.12, 0.2, 0.4];
+            let default_seeds = vec![42u64, 777u64, 20260609u64];
+            let coupling_densities = if parsed.sweep_coupling_densities.is_empty() {
+                &default_densities
+            } else {
+                &parsed.sweep_coupling_densities
+            };
+            let seeds = if parsed.sweep_seeds.is_empty() {
+                &default_seeds
+            } else {
+                &parsed.sweep_seeds
+            };
+
+            let perturbation_amplitudes = if parsed.perturbation_amplitudes.is_empty() {
+                vec![0.0]
+            } else {
+                parsed.perturbation_amplitudes.clone()
+            };
+
+            let output = match quantum::register::dirac_mode_sweep_export_with_perturbation(
+                format,
+                coupling_densities,
+                seeds,
+                parsed.n_qubits,
+                &parsed.state_model,
+                parsed.summary,
+                parsed.profile_report,
+                &perturbation_amplitudes,
+                parsed.perturbation_frequency,
+            ) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            };
+            println!("{}", output);
+        }
+        "distributed-wave-harness" => {
+            let parsed = match quantum::cli::parse_distributed_wave_harness_args(&args[2..]) {
+                Ok(value) => value,
+                Err(err) => {
+                    eprintln!("{}", err);
+                    std::process::exit(1);
+                }
+            };
+
+            if let Some(format) = parsed.sweep_export.as_deref() {
+                let output = match quantum::distributed_wave::distributed_wave_sweep_export(format) {
+                    Ok(value) => value,
+                    Err(err) => {
+                        eprintln!("{}", err);
+                        std::process::exit(1);
+                    }
+                };
+                println!("{}", output);
+                return;
+            }
+
+            let payload = quantum::distributed_wave::distributed_wave_harness_report(
+                parsed.epochs,
+                parsed.replay_runs,
+            );
+            let output = if parsed.pretty {
+                serde_json::to_string_pretty(&payload)
+            } else {
+                serde_json::to_string(&payload)
+            }
+            .expect("json serialization should succeed");
+            println!("{}", output);
         }
         "-h" | "--help" | "help" => {
             print_help(bin);

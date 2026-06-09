@@ -57,7 +57,84 @@ Black-box BV now emits a calibration summary with:
 
 This mode is designed to emulate the experimental constraints of noisy, finite-shot quantum workflows on classical hardware while remaining explicit about what it is not: it is not a claim of physical qubit execution or quantum speedup.
 
+### Bell-State Correlation Probe
+
+- Runs a two-qubit Bell-state preparation path (Hadamard + CNOT) with RWIF envelopes.
+- Emits an entanglement-coupling activity flag, coupling trivector amplitude, and a correlation score.
+- Supports an optional deterministic noise model for repeatable perturbation experiments.
+- Supports compact sweep export (`json` or `csv`) across multiple noise factors and seeds.
+
+### Quantum CLI Quick Commands
+
+```bash
+# Structural BV (oracle-structure recovery)
+cargo run -- bv --hidden 1011 --mode structural --pretty
+
+# Black-box BV (measurement-only recovery with finite shots)
+cargo run -- bv --hidden 1011 --mode black-box --shots 1024 --pretty
+
+# Bell-state correlation probe (ideal)
+cargo run -- bell-state --pretty
+
+# Bell-state correlation probe with deterministic noise
+cargo run -- bell-state --noise-factor 0.20 --noise-seed 777 --pretty
+
+# Bell-state sweep export (compact JSON)
+cargo run -- bell-state --sweep-export json --sweep-noise-factors 0.0,0.1,0.2 --sweep-seeds 42,777
+
+# Bell-state sweep export (compact CSV)
+cargo run -- bell-state --sweep-export csv --sweep-noise-factors 0.0,0.1,0.2 --sweep-seeds 42,777
+
+# Dirac-mode density sweep export (compact JSON)
+cargo run -- dirac-mode --n-qubits 6 --sweep-export json --sweep-coupling-densities 0.02,0.08,0.12,0.2 --sweep-seeds 42,777
+
+# Dirac-mode density sweep export (compact CSV)
+cargo run -- dirac-mode --n-qubits 6 --sweep-export csv --sweep-coupling-densities 0.02,0.08,0.12,0.2 --sweep-seeds 42,777
+
+# Dirac-mode density sweep with an alternate state model / rotor profile
+cargo run -- dirac-mode --n-qubits 6 --state-model contiguous-band --sweep-export json --sweep-coupling-densities 0.02,0.08,0.12,0.2 --sweep-seeds 42,777
+
+# Dirac-mode density sweep with the anisotropic low-grade bias profile
+cargo run -- dirac-mode --n-qubits 6 --state-model low-grade-bias --sweep-export json --sweep-coupling-densities 0.02,0.08,0.12,0.2 --sweep-seeds 42,777
+
+# Dirac-mode density sweep with the anisotropic high-grade bias profile
+cargo run -- dirac-mode --n-qubits 6 --state-model high-grade-bias --sweep-export json --sweep-coupling-densities 0.12,0.14,0.16,0.18,0.20,0.24,0.28,0.32,0.36,0.40 --sweep-seeds 42,777
+
+# Dirac-mode threshold summary report object (JSON)
+cargo run -- dirac-mode --summary --n-qubits 6 --sweep-export json --sweep-coupling-densities 0.02,0.08,0.12,0.2 --sweep-seeds 42,777
+
+# Dirac-mode threshold summary header metadata (CSV)
+cargo run -- dirac-mode --summary --n-qubits 6 --sweep-export csv --sweep-coupling-densities 0.02,0.08,0.12,0.2 --sweep-seeds 42,777
+
+# Dirac-mode threshold summary with per-profile delta from uniform-random baseline
+cargo run -- dirac-mode --summary --profile-report --n-qubits 6 --state-model low-grade-bias --sweep-export json --sweep-coupling-densities 0.02,0.08,0.12,0.2 --sweep-seeds 42,777
+
+# Dirac-mode perturbation-sensitivity sweep with volatility metrics
+cargo run -- dirac-mode --summary --profile-report --n-qubits 6 --state-model high-grade-bias --sweep-export json --sweep-coupling-densities 0.12,0.20,0.40 --sweep-seeds 42,777 --perturbation-amplitudes 0.0,0.2,0.6 --perturbation-frequency 24
+
+# Multi-n threshold sweep report + plot artifacts
+python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6,7,8 --densities 0.02,0.08,0.10,0.12,0.14,0.2,0.3 --seeds 42,777,20260609 --output-prefix docs/demo/dirac-mode-threshold-sweep
+
+# Multi-n threshold sweep faceted by profile
+python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6,7,8 --profiles uniform-random,contiguous-band,harmonic-stride,low-grade-bias,high-grade-bias --densities 0.02,0.08,0.10,0.12,0.14,0.2,0.3,0.36,0.40 --seeds 42,777,20260609 --output-prefix docs/demo/dirac-mode-threshold-sweep-profiles
+
+# Multi-n threshold sweep with ratio-emphasized SVG annotations
+python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6,7,8 --profiles uniform-random,low-grade-bias,high-grade-bias --densities 0.08,0.10,0.12,0.14,0.16,0.18,0.20,0.24,0.28,0.32,0.36,0.40 --seeds 42,777,20260609 --output-prefix docs/demo/dirac-mode-threshold-sweep-bias-families --svg-metric ratio
+
+# Multi-n threshold sweep with perturbation schedule (amplitude x frequency)
+python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6 --profiles uniform-random,high-grade-bias --densities 0.12,0.20,0.40 --seeds 42,777 --perturbation-amplitudes 0.0,0.2,0.6 --perturbation-frequencies 8,24,48 --output-prefix docs/demo/dirac-mode-threshold-sweep-perturbation-schedule --svg-metric crossing
+
+# Multi-n perturbation schedule sweep with dedicated volatility SVG metric
+python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6 --profiles uniform-random,high-grade-bias --densities 0.12,0.20,0.40 --seeds 42,777 --perturbation-amplitudes 0.0,0.2,0.6 --perturbation-frequencies 8,24,48 --output-prefix docs/demo/dirac-mode-threshold-sweep-perturbation-volatility --svg-metric volatility
+```
+
 For the full benchmark narrative and command log, see [docs/demo/cli-demo.md](docs/demo/cli-demo.md).
+
+The dirac-mode sweep summaries now surface both `delta_from_uniform` and `crossing_density_ratio_to_uniform`, so the front-door interpretation is visible without opening the generated JSON, CSV, or SVG artifacts. In the bias-family example, `low-grade-bias` lands below `1.0x` relative to `uniform-random`, while `high-grade-bias` lands above `1.0x`.
+
+Perturbation-sensitivity sweeps extend this with direct stress-response metrics (`phase_relaxation_steps_mean`, `torsion_hysteresis_mean`, `volatility_index_mean`, and `catastrophic_unraveling_amplitude`) so boundary hardening and unraveling behavior can be compared under injected shear amplitude/frequency schedules.
+
+The Python sweep runner now accepts `--perturbation-amplitudes` and `--perturbation-frequencies`, and batches all amplitude x frequency combinations directly into JSON/CSV/Markdown/SVG artifacts for reproducible perturbation schedule studies.
 
 Unified Geometric Cognition (UGC) is a deterministic, auditable intelligence model
 built on CSIF (Crystal Structure Information Format) and RWIF (Resonant Wave

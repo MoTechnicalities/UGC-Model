@@ -1,12 +1,12 @@
 use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 const RWIF_EVENT_SCHEMA_VERSION: &str = "RWIF_EVENT_V2";
 const RWIF_EDGE_SCHEMA_VERSION: &str = "RWIF_EDGE_V2";
 const MAX_SCAFFOLD_QUBITS: u8 = 10;
-const BLACK_BOX_BV_SHOTS: u32 = 512;
+pub const DEFAULT_BV_BLACK_BOX_SHOTS: u32 = 512;
 const REALITY_CALIBRATION_TARGET_CONFIDENCE: f64 = 0.95;
 const BLOCK_SPARSE_BLOCK_SIZE: usize = 256;
 const BLOCK_SPARSE_DENSE_FALLBACK_DENSITY_THRESHOLD: f64 = 0.12;
@@ -323,6 +323,18 @@ pub trait DeterministicProjector {
     fn measure_qubit(&self, qubit: usize) -> Result<MeasurementOutcome, String>;
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ErrorModel {
+    pub torsion_noise_factor: f64,
+    pub seed: u64,
+}
+
+impl ErrorModel {
+    pub fn normalized_torsion_noise_factor(&self) -> f64 {
+        self.torsion_noise_factor.clamp(0.0, 1.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub enum BvExecutionMode {
     Structural,
@@ -446,6 +458,7 @@ impl QuantumRegister {
         })
     }
 
+    #[allow(dead_code)]
     pub fn apply_optimization_step(&mut self, evolution_fraction: f64) -> Result<TorsionEvent, String> {
         let fraction = evolution_fraction.clamp(0.0, 1.0);
         let local_kind = if fraction < 0.5 {
@@ -556,6 +569,917 @@ impl QuantumRegister {
         self.trace.push(event.clone());
         Ok(event)
     }
+
+    pub fn apply_gate_with_noise(
+        &mut self,
+        gate: GateSpec,
+        error_model: &ErrorModel,
+    ) -> Result<TorsionEvent, String> {
+        let base_angle = gate.to_rotor().angle_radians;
+        let mut noisy_gate = gate;
+        let angle_scale = deterministic_noise_angle_scale(error_model, &noisy_gate, self.tick);
+        noisy_gate.angle_radians = Some(base_angle * angle_scale);
+        self.apply_gate(noisy_gate)
+    }
+
+    pub fn apply_gate_with_optional_noise(
+        &mut self,
+        gate: GateSpec,
+        error_model: Option<&ErrorModel>,
+    ) -> Result<TorsionEvent, String> {
+        match error_model {
+            Some(model) => self.apply_gate_with_noise(gate, model),
+            None => self.apply_gate(gate),
+        }
+    }
+}
+
+fn deterministic_noise_angle_scale(error_model: &ErrorModel, gate: &GateSpec, tick: u64) -> f64 {
+    let noise = error_model.normalized_torsion_noise_factor();
+    if noise <= f64::EPSILON {
+        return 1.0;
+    }
+
+    let mut hasher = Sha256::new();
+    hasher.update(error_model.seed.to_le_bytes());
+    hasher.update(tick.to_le_bytes());
+    hasher.update(gate.gate_id.as_bytes());
+    for target in &gate.targets {
+        hasher.update(target.to_le_bytes());
+    }
+    let digest = hasher.finalize();
+    let mut sample_bytes = [0u8; 8];
+    sample_bytes.copy_from_slice(&digest[..8]);
+    let sample = u64::from_le_bytes(sample_bytes) as f64 / u64::MAX as f64;
+
+    let baseline = 1.0 - noise;
+    let jitter = (sample - 0.5) * 2.0 * noise * 0.25;
+    (baseline + jitter).clamp(0.0, 1.0)
+}
+
+pub fn prepare_bell_state(
+    register: &mut QuantumRegister,
+    qubit_a: usize,
+    qubit_b: usize,
+    error_model: Option<&ErrorModel>,
+) -> Result<Vec<TorsionEvent>, String> {
+    let mut events = Vec::with_capacity(2);
+    events.push(register.apply_gate_with_optional_noise(
+        GateSpec {
+            gate_id: format!("bell_h_q{}", qubit_a),
+            kind: GateKind::Hadamard,
+            targets: vec![qubit_a],
+            angle_radians: Some(std::f64::consts::FRAC_PI_2),
+        },
+        error_model,
+    )?);
+    events.push(register.apply_gate_with_optional_noise(
+        GateSpec {
+            gate_id: format!("bell_cnot_q{}_q{}", qubit_a, qubit_b),
+            kind: GateKind::Cnot,
+            targets: vec![qubit_a, qubit_b],
+            angle_radians: Some(std::f64::consts::FRAC_PI_2),
+        },
+        error_model,
+    )?);
+    Ok(events)
+}
+
+pub fn bell_state_report(error_model: Option<ErrorModel>) -> Result<Value, String> {
+    let mut register = QuantumRegister::new(2)?;
+    let events = prepare_bell_state(&mut register, 0, 1, error_model.as_ref())?;
+    let m0 = register.measure_qubit(0)?;
+    let m1 = register.measure_qubit(1)?;
+    let shots = 256u32;
+    let base_seed = splitmix64(register.tick ^ 0x42454c4c5f535441);
+    let s0 = shot_measure_qubit(&register, 0, shots, base_seed ^ 0x11)?;
+    let s1 = shot_measure_qubit(&register, 1, shots, base_seed ^ 0x22)?;
+    let corr = 1.0 - (s0.one_probability - s1.one_probability).abs();
+
+    let mut payload = register.interface_contract();
+    payload["algorithm"] = json!("bell_state_preparation");
+    payload["event_count"] = json!(events.len());
+    payload["measurements"] = json!({
+        "q0": m0,
+        "q1": m1,
+    });
+    payload["correlation"] = json!({
+        "model": "one_probability_similarity_v1",
+        "score": corr.clamp(0.0, 1.0),
+        "q0_one_probability": s0.one_probability,
+        "q1_one_probability": s1.one_probability,
+    });
+    payload["entanglement_coupling_active"] = json!(
+        register
+            .rwif_trace
+            .iter()
+            .any(|trace| trace.entanglement_coupling_active)
+    );
+    payload["coupling_trivector_amplitude_after"] = json!(
+        register
+            .rwif_trace
+            .iter()
+            .filter_map(|trace| trace.coupling_trivector_amplitude_after.is_finite().then_some(trace.coupling_trivector_amplitude_after))
+            .fold(0.0f64, f64::max)
+    );
+    payload["error_model"] = serde_json::to_value(&error_model).unwrap_or(Value::Null);
+    payload["rwif_event_envelopes"] = Value::Array(
+        register
+            .rwif_trace
+            .iter()
+            .map(RwifGateTrace::to_rwif_event_envelope)
+            .collect::<Vec<_>>(),
+    );
+    payload["rwif_edge_envelopes"] = Value::Array(
+        register
+            .rwif_trace
+            .iter()
+            .map(RwifGateTrace::to_rwif_edge_envelope)
+            .collect::<Vec<_>>(),
+    );
+    payload["stable_envelope_sha256"] = json!(stable_sha256_hex(&payload)?);
+    Ok(payload)
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct BellSweepPoint {
+    pub noise_factor: f64,
+    pub seed: u64,
+    pub correlation_score: f64,
+    pub coupling_trivector_amplitude_after: f64,
+    pub entanglement_coupling_active: bool,
+    pub stable_envelope_sha256: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DiracModeSweepPoint {
+    pub state_model: String,
+    pub coupling_density: f64,
+    pub seed: u64,
+    pub perturbation_amplitude: f64,
+    pub perturbation_frequency: f64,
+    pub n_qubits: u8,
+    pub state_dimension: usize,
+    pub support_density: f64,
+    pub low_grade_blade_concentration: f64,
+    pub observed_density: f64,
+    pub perturbed_observed_density: f64,
+    pub density_threshold: f64,
+    pub threshold_distance: f64,
+    pub perturbed_threshold_distance: f64,
+    pub dense_fallback_active: bool,
+    pub perturbed_dense_fallback_active: bool,
+    pub phase_relaxation_steps: u32,
+    pub torsion_hysteresis: f64,
+    pub perturbation_volatility_index: f64,
+    pub stable_envelope_sha256: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DiracModeSeedCrossing {
+    pub seed: u64,
+    pub first_crossing_density: Option<f64>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DiracModeThresholdSummary {
+    pub computational_analog_label: String,
+    pub computational_analog_scope: String,
+    pub state_model: String,
+    pub baseline_state_model: Option<String>,
+    pub baseline_first_crossing_density: Option<f64>,
+    pub first_crossing_density_delta_from_baseline: Option<f64>,
+    pub crossing_density_ratio_to_uniform: Option<f64>,
+    pub baseline_per_seed_crossing_spread: Option<f64>,
+    pub density_threshold: f64,
+    pub first_crossing_density: Option<f64>,
+    pub crossing_seed_count: usize,
+    pub per_seed_first_crossing_density: Vec<DiracModeSeedCrossing>,
+    pub per_seed_crossing_spread_min: Option<f64>,
+    pub per_seed_crossing_spread_max: Option<f64>,
+    pub per_seed_crossing_spread: Option<f64>,
+    pub perturbation_frequency: f64,
+    pub perturbation_amplitudes: Vec<f64>,
+    pub phase_relaxation_steps_mean: f64,
+    pub torsion_hysteresis_mean: f64,
+    pub volatility_index_mean: f64,
+    pub volatility_index_max: f64,
+    pub catastrophic_unraveling_amplitude: Option<f64>,
+}
+
+fn dirac_model_perturbation_coefficients(state_model: &str) -> (f64, f64, f64) {
+    match canonical_dirac_state_model(state_model) {
+        // High-grade anisotropy is modeled as more resistant to boundary shear,
+        // with faster relaxation and lower residual hysteresis.
+        "high-grade-bias" => (0.55, 1.25, 0.22),
+        "low-grade-bias" => (1.20, 0.85, 0.58),
+        "contiguous-band" => (0.95, 1.00, 0.40),
+        "harmonic-stride" => (1.05, 0.95, 0.45),
+        _ => (1.0, 1.0, 0.42),
+    }
+}
+
+fn dirac_perturbation_response(
+    observed_density: f64,
+    low_grade_concentration: f64,
+    coupling_density: f64,
+    seed: u64,
+    state_model: &str,
+    perturbation_amplitude: f64,
+    perturbation_frequency: f64,
+    density_threshold: f64,
+) -> (f64, f64, bool, u32, f64, f64) {
+    if perturbation_amplitude <= 0.0 || perturbation_frequency <= 0.0 {
+        let perturbed_active = observed_density >= density_threshold;
+        return (
+            bell_round6(observed_density),
+            bell_round6(observed_density - density_threshold),
+            perturbed_active,
+            0,
+            0.0,
+            0.0,
+        );
+    }
+
+    let (shear_scale, relaxation_scale, hysteresis_scale) =
+        dirac_model_perturbation_coefficients(state_model);
+    let seed_phase = ((seed ^ 0x5045525455524231) % 2048) as f64 / 2048.0;
+    let phase = coupling_density * std::f64::consts::TAU * perturbation_frequency
+        + seed_phase * std::f64::consts::TAU;
+    let wave_shear = phase.sin().abs() * 0.75 + phase.cos().abs() * 0.25;
+    let grade_exposure = 1.0 + (1.0 - low_grade_concentration).max(0.0) * 0.25;
+    let effective_shear = perturbation_amplitude * wave_shear * shear_scale * grade_exposure;
+
+    let perturbed_observed_density = (observed_density - effective_shear).clamp(0.0, 1.0);
+    let perturbed_threshold_distance = perturbed_observed_density - density_threshold;
+    let perturbed_dense_fallback_active = perturbed_observed_density >= density_threshold;
+
+    let normalized_relaxation_load = (effective_shear * 96.0 / relaxation_scale.max(1e-6)).max(0.0);
+    let phase_relaxation_steps = normalized_relaxation_load.ceil() as u32;
+    let torsion_hysteresis = (effective_shear * hysteresis_scale).clamp(0.0, 1.0);
+    let relaxation_component = ((phase_relaxation_steps as f64) / 64.0).min(1.0);
+    let volatility_index =
+        (0.55 * effective_shear + 0.30 * torsion_hysteresis + 0.15 * relaxation_component)
+            .clamp(0.0, 1.0);
+
+    (
+        bell_round6(perturbed_observed_density),
+        bell_round6(perturbed_threshold_distance),
+        perturbed_dense_fallback_active,
+        phase_relaxation_steps,
+        bell_round6(torsion_hysteresis),
+        bell_round6(volatility_index),
+    )
+}
+
+pub fn bell_state_sweep_points(noise_factors: &[f64], seeds: &[u64]) -> Result<Vec<BellSweepPoint>, String> {
+    if noise_factors.is_empty() {
+        return Err("noise_factors must not be empty".to_string());
+    }
+    if seeds.is_empty() {
+        return Err("seeds must not be empty".to_string());
+    }
+
+    let mut points = Vec::<BellSweepPoint>::new();
+    for &noise_factor in noise_factors {
+        if !(0.0..=1.0).contains(&noise_factor) {
+            return Err(format!("noise_factor must be in [0,1], got {}", noise_factor));
+        }
+        for &seed in seeds {
+            let report = bell_state_report(Some(ErrorModel {
+                torsion_noise_factor: noise_factor,
+                seed,
+            }))?;
+            let correlation_score = report
+                .get("correlation")
+                .and_then(Value::as_object)
+                .and_then(|corr| corr.get("score"))
+                .and_then(Value::as_f64)
+                .ok_or_else(|| "bell sweep report missing correlation.score".to_string())?;
+            let coupling = report
+                .get("coupling_trivector_amplitude_after")
+                .and_then(Value::as_f64)
+                .ok_or_else(|| "bell sweep report missing coupling_trivector_amplitude_after".to_string())?;
+            let entanglement = report
+                .get("entanglement_coupling_active")
+                .and_then(Value::as_bool)
+                .ok_or_else(|| "bell sweep report missing entanglement_coupling_active".to_string())?;
+            let stable_hash = report
+                .get("stable_envelope_sha256")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "bell sweep report missing stable_envelope_sha256".to_string())?
+                .to_string();
+
+            points.push(BellSweepPoint {
+                noise_factor: bell_round6(noise_factor),
+                seed,
+                correlation_score: bell_round6(correlation_score),
+                coupling_trivector_amplitude_after: bell_round6(coupling),
+                entanglement_coupling_active: entanglement,
+                stable_envelope_sha256: stable_hash,
+            });
+        }
+    }
+    Ok(points)
+}
+
+pub fn bell_state_sweep_export(
+    format: &str,
+    noise_factors: &[f64],
+    seeds: &[u64],
+) -> Result<String, String> {
+    let points = bell_state_sweep_points(noise_factors, seeds)?;
+    match format {
+        "json" => {
+            let values = points
+                .iter()
+                .map(|p| serde_json::to_value(p).unwrap_or(Value::Null))
+                .collect::<Vec<_>>();
+            serde_json::to_string(&values).map_err(|e| format!("failed to serialize JSON export: {}", e))
+        }
+        "csv" => {
+            let mut out = String::from(
+                "noise_factor,seed,correlation_score,coupling_trivector_amplitude_after,entanglement_coupling_active,stable_envelope_sha256\n",
+            );
+            for p in &points {
+                out.push_str(&format!(
+                    "{:.6},{},{:.6},{:.6},{},{}\n",
+                    p.noise_factor,
+                    p.seed,
+                    p.correlation_score,
+                    p.coupling_trivector_amplitude_after,
+                    p.entanglement_coupling_active,
+                    p.stable_envelope_sha256
+                ));
+            }
+            Ok(out)
+        }
+        other => Err(format!("unsupported bell sweep export format: {}", other)),
+    }
+}
+
+pub fn is_supported_dirac_state_model(value: &str) -> bool {
+    matches!(
+        value,
+        "uniform-random"
+            | "contiguous-band"
+            | "harmonic-stride"
+            | "low-grade-bias"
+            | "low-grade-anisotropic"
+            | "high-grade-bias"
+    )
+}
+
+fn canonical_dirac_state_model(value: &str) -> &str {
+    match value {
+        "low-grade-anisotropic" => "low-grade-bias",
+        other => other,
+    }
+}
+
+fn synthetic_density_state(
+    dimension: usize,
+    coupling_density: f64,
+    seed: u64,
+    state_model: &str,
+) -> Result<MultiVectorND, String> {
+    if dimension == 0 {
+        return Err("dirac-mode synthetic state dimension must be >= 1".to_string());
+    }
+    if !(0.0..=1.0).contains(&coupling_density) {
+        return Err(format!("coupling_density must be in [0,1], got {}", coupling_density));
+    }
+
+    let target_nonzero = ((coupling_density * dimension as f64).round() as usize)
+        .clamp(1, dimension);
+    let mut active = BTreeSet::<usize>::new();
+    active.insert(0);
+
+    match state_model {
+        "uniform-random" => {
+            let mut rng = splitmix64(seed ^ 0x44495241435F4D4F);
+            while active.len() < target_nonzero {
+                let pick = (xorshift64star_next(&mut rng) as usize) % dimension;
+                active.insert(pick);
+            }
+        }
+        "contiguous-band" => {
+            let mut rng = splitmix64(seed ^ 0x434F4E544947554F);
+            let start = (xorshift64star_next(&mut rng) as usize) % dimension;
+            for offset in 0..target_nonzero {
+                active.insert((start + offset) % dimension);
+            }
+        }
+        "harmonic-stride" => {
+            let mut rng = splitmix64(seed ^ 0x4841524D4F4E4943);
+            let stride_base = ((xorshift64star_next(&mut rng) as usize) % 17).max(1);
+            let stride = stride_base.saturating_mul(2).saturating_add(1);
+            let start = (xorshift64star_next(&mut rng) as usize) % dimension;
+            let mut cursor = start;
+            while active.len() < target_nonzero {
+                active.insert(cursor % dimension);
+                cursor = cursor.wrapping_add(stride);
+            }
+        }
+        "low-grade-bias" | "low-grade-anisotropic" => {
+            let low_grade = (0..dimension)
+                .filter(|idx| idx.count_ones() <= 2)
+                .collect::<Vec<_>>();
+            for idx in low_grade.iter().copied().take(target_nonzero) {
+                active.insert(idx);
+            }
+            let mut rng = splitmix64(seed ^ 0x4C4F574752414445);
+            while active.len() < target_nonzero {
+                let pick = (xorshift64star_next(&mut rng) as usize) % dimension;
+                active.insert(pick);
+            }
+        }
+        "high-grade-bias" => {
+            let high_grade = (0..dimension)
+                .filter(|idx| idx.count_ones() >= 4)
+                .collect::<Vec<_>>();
+            for idx in high_grade.iter().copied().take(target_nonzero) {
+                active.insert(idx);
+            }
+            let mut rng = splitmix64(seed ^ 0x4849474847524144);
+            while active.len() < target_nonzero {
+                let pick = (xorshift64star_next(&mut rng) as usize) % dimension;
+                active.insert(pick);
+            }
+        }
+        other => {
+            return Err(format!("unsupported dirac-mode state model: {}", other));
+        }
+    }
+
+    let mut state = MultiVectorND::zero(dimension);
+    for (rank, idx) in active.iter().enumerate() {
+        // Keep deterministic, bounded amplitudes while guaranteeing non-zero support.
+        state.components[*idx] = 1.0 / (rank as f64 + 1.0);
+    }
+    Ok(state)
+}
+
+fn low_grade_blade_concentration(state: &MultiVectorND) -> f64 {
+    let non_zero = state.non_zero_count();
+    if non_zero == 0 {
+        return 0.0;
+    }
+    let low_grade = state
+        .components
+        .iter()
+        .enumerate()
+        .filter(|(idx, value)| **value != 0.0 && idx.count_ones() <= 2)
+        .count();
+    low_grade as f64 / non_zero as f64
+}
+
+fn observed_dirac_density(state: &MultiVectorND, state_model: &str) -> (f64, f64, f64) {
+    let support_density = if state.dimension == 0 {
+        0.0
+    } else {
+        state.non_zero_count() as f64 / state.dimension as f64
+    };
+    let low_grade_concentration = low_grade_blade_concentration(state);
+    let observed_density = match canonical_dirac_state_model(state_model) {
+        "low-grade-bias" => {
+            let low_grade_support_density = support_density * low_grade_concentration;
+            (support_density + 2.0 * low_grade_support_density).clamp(0.0, 1.0)
+        }
+        "high-grade-bias" => {
+            let high_grade_concentration = 1.0 - low_grade_concentration;
+            let high_grade_support_density = support_density * high_grade_concentration;
+            (support_density - 0.7 * high_grade_support_density).clamp(0.0, 1.0)
+        }
+        _ => support_density,
+    };
+    (support_density, low_grade_concentration, observed_density)
+}
+
+#[allow(dead_code)]
+pub fn dirac_mode_sweep_points(
+    coupling_densities: &[f64],
+    seeds: &[u64],
+    n_qubits: u8,
+    state_model: &str,
+) -> Result<Vec<DiracModeSweepPoint>, String> {
+    dirac_mode_sweep_points_with_perturbation(
+        coupling_densities,
+        seeds,
+        n_qubits,
+        state_model,
+        &[0.0],
+        8.0,
+    )
+}
+
+pub fn dirac_mode_sweep_points_with_perturbation(
+    coupling_densities: &[f64],
+    seeds: &[u64],
+    n_qubits: u8,
+    state_model: &str,
+    perturbation_amplitudes: &[f64],
+    perturbation_frequency: f64,
+) -> Result<Vec<DiracModeSweepPoint>, String> {
+    if coupling_densities.is_empty() {
+        return Err("coupling_densities must not be empty".to_string());
+    }
+    if seeds.is_empty() {
+        return Err("seeds must not be empty".to_string());
+    }
+    if perturbation_amplitudes.is_empty() {
+        return Err("perturbation_amplitudes must not be empty".to_string());
+    }
+    if perturbation_amplitudes.iter().any(|v| !(0.0..=1.0).contains(v)) {
+        return Err("perturbation_amplitudes must be in [0,1]".to_string());
+    }
+    if !(0.0..=1024.0).contains(&perturbation_frequency) {
+        return Err(format!(
+            "perturbation_frequency must be in [0,1024], got {}",
+            perturbation_frequency
+        ));
+    }
+    let state_model = canonical_dirac_state_model(state_model);
+    if !is_supported_dirac_state_model(state_model) {
+        return Err(format!("unsupported dirac-mode state model: {}", state_model));
+    }
+
+    let register = QuantumRegister::new(n_qubits)?;
+    let dimension = register.state.dimension;
+    let threshold = BLOCK_SPARSE_DENSE_FALLBACK_DENSITY_THRESHOLD;
+    let mut points = Vec::<DiracModeSweepPoint>::new();
+
+    for &coupling_density in coupling_densities {
+        if !(0.0..=1.0).contains(&coupling_density) {
+            return Err(format!("coupling_density must be in [0,1], got {}", coupling_density));
+        }
+
+        for &seed in seeds {
+            let state = synthetic_density_state(dimension, coupling_density, seed, state_model)?;
+            let (support_density, low_grade_concentration, observed_density) =
+                observed_dirac_density(&state, state_model);
+            let threshold_distance = observed_density - threshold;
+            let dense_fallback_active = observed_density >= threshold;
+
+            for &perturbation_amplitude in perturbation_amplitudes {
+                let (
+                    perturbed_observed_density,
+                    perturbed_threshold_distance,
+                    perturbed_dense_fallback_active,
+                    phase_relaxation_steps,
+                    torsion_hysteresis,
+                    perturbation_volatility_index,
+                ) = dirac_perturbation_response(
+                    observed_density,
+                    low_grade_concentration,
+                    coupling_density,
+                    seed,
+                    state_model,
+                    perturbation_amplitude,
+                    perturbation_frequency,
+                    threshold,
+                );
+
+                let stable_source = json!({
+                    "mode": "dirac_mode_density_sweep_v2_perturbation",
+                    "state_model": state_model,
+                    "coupling_density": bell_round6(coupling_density),
+                    "seed": seed,
+                    "perturbation_amplitude": bell_round6(perturbation_amplitude),
+                    "perturbation_frequency": bell_round6(perturbation_frequency),
+                    "n_qubits": n_qubits,
+                    "state_dimension": dimension,
+                    "support_density": bell_round6(support_density),
+                    "low_grade_blade_concentration": bell_round6(low_grade_concentration),
+                    "observed_density": bell_round6(observed_density),
+                    "perturbed_observed_density": perturbed_observed_density,
+                    "density_threshold": bell_round6(threshold),
+                    "threshold_distance": bell_round6(threshold_distance),
+                    "perturbed_threshold_distance": perturbed_threshold_distance,
+                    "dense_fallback_active": dense_fallback_active,
+                    "perturbed_dense_fallback_active": perturbed_dense_fallback_active,
+                    "phase_relaxation_steps": phase_relaxation_steps,
+                    "torsion_hysteresis": torsion_hysteresis,
+                    "perturbation_volatility_index": perturbation_volatility_index,
+                });
+                let stable_hash = stable_sha256_hex(&stable_source)?;
+
+                points.push(DiracModeSweepPoint {
+                    state_model: state_model.to_string(),
+                    coupling_density: bell_round6(coupling_density),
+                    seed,
+                    perturbation_amplitude: bell_round6(perturbation_amplitude),
+                    perturbation_frequency: bell_round6(perturbation_frequency),
+                    n_qubits,
+                    state_dimension: dimension,
+                    support_density: bell_round6(support_density),
+                    low_grade_blade_concentration: bell_round6(low_grade_concentration),
+                    observed_density: bell_round6(observed_density),
+                    perturbed_observed_density,
+                    density_threshold: bell_round6(threshold),
+                    threshold_distance: bell_round6(threshold_distance),
+                    perturbed_threshold_distance,
+                    dense_fallback_active,
+                    perturbed_dense_fallback_active,
+                    phase_relaxation_steps,
+                    torsion_hysteresis,
+                    perturbation_volatility_index,
+                    stable_envelope_sha256: stable_hash,
+                });
+            }
+        }
+    }
+
+    Ok(points)
+}
+
+#[allow(dead_code)]
+pub fn dirac_mode_sweep_export(
+    format: &str,
+    coupling_densities: &[f64],
+    seeds: &[u64],
+    n_qubits: u8,
+    state_model: &str,
+    include_summary: bool,
+    include_profile_report: bool,
+) -> Result<String, String> {
+    dirac_mode_sweep_export_with_perturbation(
+        format,
+        coupling_densities,
+        seeds,
+        n_qubits,
+        state_model,
+        include_summary,
+        include_profile_report,
+        &[0.0],
+        8.0,
+    )
+}
+
+pub fn dirac_mode_sweep_export_with_perturbation(
+    format: &str,
+    coupling_densities: &[f64],
+    seeds: &[u64],
+    n_qubits: u8,
+    state_model: &str,
+    include_summary: bool,
+    include_profile_report: bool,
+    perturbation_amplitudes: &[f64],
+    perturbation_frequency: f64,
+) -> Result<String, String> {
+    let points = dirac_mode_sweep_points_with_perturbation(
+        coupling_densities,
+        seeds,
+        n_qubits,
+        state_model,
+        perturbation_amplitudes,
+        perturbation_frequency,
+    )?;
+    let baseline_points = if include_profile_report && canonical_dirac_state_model(state_model) != "uniform-random" {
+        Some(dirac_mode_sweep_points_with_perturbation(
+            coupling_densities,
+            seeds,
+            n_qubits,
+            "uniform-random",
+            perturbation_amplitudes,
+            perturbation_frequency,
+        )?)
+    } else {
+        None
+    };
+    let summary = dirac_mode_threshold_summary(&points, baseline_points.as_deref());
+    match format {
+        "json" => {
+            if include_summary {
+                let values = points
+                    .iter()
+                    .map(|p| serde_json::to_value(p).unwrap_or(Value::Null))
+                    .collect::<Vec<_>>();
+                let report = json!({
+                    "object": "csif.quantum.dirac_mode.threshold_report",
+                    "schema_version": "csif_dirac_mode_threshold_report_v1",
+                    "summary": summary,
+                    "rows": values,
+                });
+                serde_json::to_string(&report)
+                    .map_err(|e| format!("failed to serialize JSON export: {}", e))
+            } else {
+                let values = points
+                    .iter()
+                    .map(|p| serde_json::to_value(p).unwrap_or(Value::Null))
+                    .collect::<Vec<_>>();
+                serde_json::to_string(&values).map_err(|e| format!("failed to serialize JSON export: {}", e))
+            }
+        }
+        "csv" => {
+            let mut out = String::new();
+            if include_summary {
+                let summary_json = serde_json::to_string(&summary)
+                    .map_err(|e| format!("failed to serialize summary metadata: {}", e))?;
+                out.push_str("# object=csif.quantum.dirac_mode.threshold_report\n");
+                out.push_str(&format!("# summary={}\n", summary_json));
+            }
+            out.push_str(
+                "state_model,coupling_density,seed,perturbation_amplitude,perturbation_frequency,n_qubits,state_dimension,support_density,low_grade_blade_concentration,observed_density,perturbed_observed_density,density_threshold,threshold_distance,perturbed_threshold_distance,dense_fallback_active,perturbed_dense_fallback_active,phase_relaxation_steps,torsion_hysteresis,perturbation_volatility_index,stable_envelope_sha256\n",
+            );
+            for p in &points {
+                out.push_str(&format!(
+                    "{},{:.6},{},{:.6},{:.6},{},{},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{:.6},{},{},{},{:.6},{:.6},{}\n",
+                    p.state_model,
+                    p.coupling_density,
+                    p.seed,
+                    p.perturbation_amplitude,
+                    p.perturbation_frequency,
+                    p.n_qubits,
+                    p.state_dimension,
+                    p.support_density,
+                    p.low_grade_blade_concentration,
+                    p.observed_density,
+                    p.perturbed_observed_density,
+                    p.density_threshold,
+                    p.threshold_distance,
+                    p.perturbed_threshold_distance,
+                    p.dense_fallback_active,
+                    p.perturbed_dense_fallback_active,
+                    p.phase_relaxation_steps,
+                    p.torsion_hysteresis,
+                    p.perturbation_volatility_index,
+                    p.stable_envelope_sha256
+                ));
+            }
+            Ok(out)
+        }
+        other => Err(format!("unsupported dirac-mode sweep export format: {}", other)),
+    }
+}
+
+pub fn dirac_mode_threshold_summary(
+    points: &[DiracModeSweepPoint],
+    baseline_points: Option<&[DiracModeSweepPoint]>,
+) -> DiracModeThresholdSummary {
+    let density_threshold = bell_round6(BLOCK_SPARSE_DENSE_FALLBACK_DENSITY_THRESHOLD);
+    let state_model = points
+        .first()
+        .map(|p| p.state_model.clone())
+        .unwrap_or_else(|| "unknown".to_string());
+    let mut seeds = points.iter().map(|p| p.seed).collect::<Vec<_>>();
+    seeds.sort_unstable();
+    seeds.dedup();
+
+    let mut per_seed = Vec::<DiracModeSeedCrossing>::new();
+    let mut crossing_values = Vec::<f64>::new();
+
+    for seed in seeds {
+        let first = points
+            .iter()
+            .filter(|p| p.seed == seed && p.dense_fallback_active)
+            .map(|p| p.coupling_density)
+            .fold(None, |acc: Option<f64>, value| match acc {
+                Some(current) => Some(current.min(value)),
+                None => Some(value),
+            });
+        if let Some(value) = first {
+            crossing_values.push(value);
+        }
+        per_seed.push(DiracModeSeedCrossing {
+            seed,
+            first_crossing_density: first,
+        });
+    }
+
+    let first_crossing_density = crossing_values
+        .iter()
+        .copied()
+        .fold(None, |acc: Option<f64>, value| match acc {
+            Some(current) => Some(current.min(value)),
+            None => Some(value),
+        })
+        .map(bell_round6);
+
+    let (spread_min, spread_max, spread) = if crossing_values.is_empty() {
+        (None, None, None)
+    } else {
+        let min_v = crossing_values
+            .iter()
+            .copied()
+            .fold(f64::INFINITY, f64::min);
+        let max_v = crossing_values
+            .iter()
+            .copied()
+            .fold(f64::NEG_INFINITY, f64::max);
+        (
+            Some(bell_round6(min_v)),
+            Some(bell_round6(max_v)),
+            Some(bell_round6(max_v - min_v)),
+        )
+    };
+
+    let (baseline_state_model, baseline_first_crossing_density, baseline_per_seed_crossing_spread, delta_from_baseline, ratio_to_baseline) =
+        if let Some(baseline) = baseline_points {
+            let baseline_summary = dirac_mode_threshold_summary(baseline, None);
+            let delta = match (first_crossing_density, baseline_summary.first_crossing_density) {
+                (Some(current), Some(base)) => Some(bell_round6(current - base)),
+                _ => None,
+            };
+            let ratio = match (first_crossing_density, baseline_summary.first_crossing_density) {
+                (Some(current), Some(base)) if base.abs() > f64::EPSILON => {
+                    Some(bell_round6(current / base))
+                }
+                _ => None,
+            };
+            (
+                Some(baseline_summary.state_model),
+                baseline_summary.first_crossing_density,
+                baseline_summary.per_seed_crossing_spread,
+                delta,
+                ratio,
+            )
+        } else {
+            (None, None, None, None, None)
+        };
+
+    let perturbation_frequency = points
+        .first()
+        .map(|p| p.perturbation_frequency)
+        .unwrap_or(0.0);
+    let mut perturbation_amplitudes = points
+        .iter()
+        .map(|p| p.perturbation_amplitude)
+        .collect::<Vec<_>>();
+    perturbation_amplitudes.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    perturbation_amplitudes.dedup_by(|a, b| (*a - *b).abs() <= 1e-9);
+
+    let phase_relaxation_steps_mean = if points.is_empty() {
+        0.0
+    } else {
+        bell_round6(
+            points
+                .iter()
+                .map(|p| p.phase_relaxation_steps as f64)
+                .sum::<f64>()
+                / points.len() as f64,
+        )
+    };
+    let torsion_hysteresis_mean = if points.is_empty() {
+        0.0
+    } else {
+        bell_round6(points.iter().map(|p| p.torsion_hysteresis).sum::<f64>() / points.len() as f64)
+    };
+    let volatility_index_mean = if points.is_empty() {
+        0.0
+    } else {
+        bell_round6(
+            points
+                .iter()
+                .map(|p| p.perturbation_volatility_index)
+                .sum::<f64>()
+                / points.len() as f64,
+        )
+    };
+    let volatility_index_max = bell_round6(
+        points
+            .iter()
+            .map(|p| p.perturbation_volatility_index)
+            .fold(0.0f64, f64::max),
+    );
+    let catastrophic_unraveling_amplitude = points
+        .iter()
+        .filter(|p| p.dense_fallback_active && !p.perturbed_dense_fallback_active)
+        .map(|p| p.perturbation_amplitude)
+        .fold(None, |acc: Option<f64>, value| match acc {
+            Some(current) => Some(current.min(value)),
+            None => Some(value),
+        })
+        .map(bell_round6);
+
+    DiracModeThresholdSummary {
+        computational_analog_label: "computational_schwinger_limit_analog".to_string(),
+        computational_analog_scope: "sparse_to_dense_crystallization_threshold".to_string(),
+        state_model,
+        baseline_state_model,
+        baseline_first_crossing_density,
+        first_crossing_density_delta_from_baseline: delta_from_baseline,
+        crossing_density_ratio_to_uniform: ratio_to_baseline,
+        baseline_per_seed_crossing_spread,
+        density_threshold,
+        first_crossing_density,
+        crossing_seed_count: crossing_values.len(),
+        per_seed_first_crossing_density: per_seed,
+        per_seed_crossing_spread_min: spread_min,
+        per_seed_crossing_spread_max: spread_max,
+        per_seed_crossing_spread: spread,
+        perturbation_frequency: bell_round6(perturbation_frequency),
+        perturbation_amplitudes,
+        phase_relaxation_steps_mean,
+        torsion_hysteresis_mean,
+        volatility_index_mean,
+        volatility_index_max,
+        catastrophic_unraveling_amplitude,
+    }
+}
+
+fn bell_round6(value: f64) -> f64 {
+    (value * 1_000_000.0).round() / 1_000_000.0
 }
 
 impl RegisterGateApplier for QuantumRegister {
@@ -715,6 +1639,7 @@ fn geometric_convergence_metric(state: &MultiVectorND, coupling_mask: Option<usi
     }
 }
 
+#[allow(dead_code)]
 fn blend_states(local_state: &MultiVectorND, coupling_state: &MultiVectorND, local_weight: f64, coupling_weight: f64) -> MultiVectorND {
     let mut blended = MultiVectorND::zero(local_state.dimension);
     for idx in 0..local_state.dimension {
@@ -796,6 +1721,7 @@ fn evolve_gate_state(prev_state: &MultiVectorND, rotor: &RotorSpec, dimension: u
     Ok(evolved)
 }
 
+#[allow(dead_code)]
 fn optimization_ascii_bar(local_weight: f64, coupling_weight: f64, width: usize) -> String {
     let active = (coupling_weight.clamp(0.0, 1.0) * width as f64).round() as usize;
     let coupling_part = "#".repeat(active.min(width));
@@ -910,6 +1836,7 @@ impl MultiVectorND {
         Ok(result)
     }
 
+    #[allow(dead_code)]
     pub fn geometric_product_left_sparse(&self, other: &Self) -> Result<Self, String> {
         if self.dimension != other.dimension {
             return Err("geometric_product dimension mismatch".to_string());
@@ -1430,6 +2357,14 @@ pub fn run_bernstein_vazirani(hidden: &str) -> Result<Value, String> {
 }
 
 pub fn run_bernstein_vazirani_black_box(hidden: &str) -> Result<Value, String> {
+    run_bernstein_vazirani_black_box_with_shots(hidden, DEFAULT_BV_BLACK_BOX_SHOTS)
+}
+
+pub fn run_bernstein_vazirani_black_box_with_shots(hidden: &str, shots: u32) -> Result<Value, String> {
+    if shots == 0 {
+        return Err("shots must be >= 1".to_string());
+    }
+
     let mut oracle = OpaqueBvOracle::new(hidden)?;
     let query_len = oracle.query_len();
     let ancilla = query_len;
@@ -1462,6 +2397,11 @@ pub fn run_bernstein_vazirani_black_box(hidden: &str) -> Result<Value, String> {
 
     let oracle_internal_gate_count = oracle.apply_to_register(&mut register)?;
     let oracle_call_count = oracle.oracle_call_count();
+    let execution_mode = oracle.execution_mode();
+    let execution_mode_label = match execution_mode {
+        BvExecutionMode::Structural => "structural",
+        BvExecutionMode::BlackBox => "black_box",
+    };
 
     for q in 0..query_len {
         let _ = register.apply_gate(GateSpec {
@@ -1477,7 +2417,7 @@ pub fn run_bernstein_vazirani_black_box(hidden: &str) -> Result<Value, String> {
     let (recovered_hidden_string, shot_measurements) = recover_hidden_from_black_box_measurements(
         &register,
         query_len,
-        BLACK_BOX_BV_SHOTS,
+        shots,
         run_seed,
     )?;
     let deterministic_match = recovered_hidden_string == hidden;
@@ -1529,15 +2469,17 @@ pub fn run_bernstein_vazirani_black_box(hidden: &str) -> Result<Value, String> {
         .collect::<Vec<_>>();
 
     let mut payload = register.interface_contract();
-    payload["execution_mode"] = json!("black_box");
+    payload["execution_mode"] = json!(execution_mode_label);
     payload["algorithm"] = json!("bernstein_vazirani");
     payload["measurement_only_recovery"] = json!(true);
     payload["hidden_string"] = json!(hidden);
     payload["recovered_hidden_string"] = json!(recovered_hidden_string);
     payload["deterministic_match"] = json!(deterministic_match);
     payload["oracle_call_count"] = json!(oracle_call_count);
+    payload["oracle_execution_mode"] = json!(execution_mode_label);
     payload["oracle_internal_gate_count"] = json!(oracle_internal_gate_count);
-    payload["measurement_shots"] = json!(BLACK_BOX_BV_SHOTS);
+    payload["oracle_internal_gate_count_total"] = json!(oracle.applied_gate_count());
+    payload["measurement_shots"] = json!(shots);
     payload["measurement_sampler"] = json!("seeded_xorshift64star_v1");
     payload["measurement_seed"] = json!(run_seed);
     payload["shot_measurements"] = serde_json::to_value(&shot_measurements)
@@ -1644,6 +2586,303 @@ mod tests {
     }
 
     #[test]
+    fn apply_gate_with_noise_is_seed_deterministic() {
+        let model = ErrorModel {
+            torsion_noise_factor: 0.2,
+            seed: 42,
+        };
+
+        let gate = GateSpec {
+            gate_id: "noisy_phase".to_string(),
+            kind: GateKind::Phase,
+            targets: vec![0],
+            angle_radians: Some(std::f64::consts::FRAC_PI_2),
+        };
+
+        let mut a = QuantumRegister::new(1).expect("register should initialize");
+        let mut b = QuantumRegister::new(1).expect("register should initialize");
+        let _ = a
+            .apply_gate_with_noise(gate.clone(), &model)
+            .expect("noisy gate should apply");
+        let _ = b
+            .apply_gate_with_noise(gate, &model)
+            .expect("noisy gate should apply");
+
+        assert_eq!(a.trace.last(), b.trace.last());
+        assert_eq!(a.rwif_trace.last(), b.rwif_trace.last());
+    }
+
+    #[test]
+    fn bell_state_prep_activates_entanglement_coupling() {
+        let mut register = QuantumRegister::new(2).expect("register should initialize");
+        let events = prepare_bell_state(&mut register, 0, 1, None)
+            .expect("bell preparation should succeed");
+        assert_eq!(events.len(), 2);
+
+        let last = register
+            .rwif_trace
+            .last()
+            .expect("rwif trace should contain cnot event");
+        assert!(last.entanglement_coupling_active);
+        assert!(last.coupling_trivector_amplitude_after > 0.0);
+    }
+
+    #[test]
+    fn bell_state_report_emits_correlation_fields() {
+        let report = bell_state_report(None).expect("bell report should succeed");
+        assert_eq!(report.get("algorithm"), Some(&json!("bell_state_preparation")));
+        assert_eq!(report.get("event_count"), Some(&json!(2)));
+        assert_eq!(report.get("entanglement_coupling_active"), Some(&json!(true)));
+
+        let coupling_after = report
+            .get("coupling_trivector_amplitude_after")
+            .and_then(Value::as_f64)
+            .expect("coupling_trivector_amplitude_after should be f64");
+        assert!(coupling_after > 0.0);
+
+        let score = report
+            .get("correlation")
+            .and_then(Value::as_object)
+            .and_then(|corr| corr.get("score"))
+            .and_then(Value::as_f64)
+            .expect("correlation.score should be f64");
+        assert!((0.0..=1.0).contains(&score));
+    }
+
+    #[test]
+    fn bell_state_sweep_export_json_and_csv_are_compact_and_consistent() {
+        let noise_factors = vec![0.0, 0.2];
+        let seeds = vec![42u64, 777u64];
+
+        let json_export = bell_state_sweep_export("json", &noise_factors, &seeds)
+            .expect("json export should succeed");
+        let csv_export = bell_state_sweep_export("csv", &noise_factors, &seeds)
+            .expect("csv export should succeed");
+
+        let json_rows: Vec<Value> =
+            serde_json::from_str(&json_export).expect("json export should parse");
+        assert_eq!(json_rows.len(), noise_factors.len() * seeds.len());
+
+        let csv_lines = csv_export.lines().collect::<Vec<_>>();
+        assert_eq!(
+            csv_lines.first().copied(),
+            Some("noise_factor,seed,correlation_score,coupling_trivector_amplitude_after,entanglement_coupling_active,stable_envelope_sha256")
+        );
+        assert_eq!(csv_lines.len(), json_rows.len() + 1);
+    }
+
+    #[test]
+    fn dirac_mode_sweep_transition_tracks_density_threshold() {
+        let densities = vec![0.02, 0.2];
+        let seeds = vec![42u64];
+        let rows = dirac_mode_sweep_points(&densities, &seeds, 6, "uniform-random")
+            .expect("dirac sweep should succeed");
+        assert_eq!(rows.len(), 2);
+        assert!(rows[0].observed_density < rows[0].density_threshold);
+        assert!(!rows[0].dense_fallback_active);
+        assert!(rows[1].observed_density >= rows[1].density_threshold);
+        assert!(rows[1].dense_fallback_active);
+    }
+
+    #[test]
+    fn dirac_mode_sweep_is_replay_stable_for_same_inputs() {
+        let densities = vec![0.08, 0.12, 0.2];
+        let seeds = vec![42u64, 777u64];
+
+        let run_a = dirac_mode_sweep_points(&densities, &seeds, 6, "uniform-random")
+            .expect("first sweep run should succeed");
+        let run_b = dirac_mode_sweep_points(&densities, &seeds, 6, "uniform-random")
+            .expect("second sweep run should succeed");
+
+        assert_eq!(run_a, run_b);
+        assert!(run_a.iter().all(|row| !row.stable_envelope_sha256.is_empty()));
+    }
+
+    #[test]
+    fn dirac_mode_sweep_export_json_and_csv_are_compact_and_consistent() {
+        let densities = vec![0.02, 0.12, 0.2];
+        let seeds = vec![42u64, 777u64];
+
+        let json_export = dirac_mode_sweep_export("json", &densities, &seeds, 6, "uniform-random", false, false)
+            .expect("json export should succeed");
+        let csv_export = dirac_mode_sweep_export("csv", &densities, &seeds, 6, "uniform-random", false, false)
+            .expect("csv export should succeed");
+
+        let json_rows: Vec<Value> = serde_json::from_str(&json_export)
+            .expect("json export should parse");
+        assert_eq!(json_rows.len(), densities.len() * seeds.len());
+        assert_eq!(json_rows[0].get("state_model"), Some(&json!("uniform-random")));
+
+        let csv_lines = csv_export.lines().collect::<Vec<_>>();
+        assert_eq!(
+            csv_lines.first().copied(),
+            Some("state_model,coupling_density,seed,perturbation_amplitude,perturbation_frequency,n_qubits,state_dimension,support_density,low_grade_blade_concentration,observed_density,perturbed_observed_density,density_threshold,threshold_distance,perturbed_threshold_distance,dense_fallback_active,perturbed_dense_fallback_active,phase_relaxation_steps,torsion_hysteresis,perturbation_volatility_index,stable_envelope_sha256")
+        );
+        assert_eq!(csv_lines.len(), json_rows.len() + 1);
+    }
+
+    #[test]
+    fn dirac_mode_sweep_summary_json_wraps_rows_with_report_object() {
+        let densities = vec![0.02, 0.12, 0.2];
+        let seeds = vec![42u64, 777u64];
+
+        let json_export = dirac_mode_sweep_export("json", &densities, &seeds, 6, "uniform-random", true, false)
+            .expect("json export should succeed");
+        let report: Value = serde_json::from_str(&json_export)
+            .expect("summary json export should parse as object");
+
+        assert_eq!(
+            report.get("object"),
+            Some(&json!("csif.quantum.dirac_mode.threshold_report"))
+        );
+
+        let summary = report
+            .get("summary")
+            .and_then(Value::as_object)
+            .expect("summary should be object");
+        assert_eq!(
+            summary.get("computational_analog_label"),
+            Some(&json!("computational_schwinger_limit_analog"))
+        );
+        assert_eq!(summary.get("state_model"), Some(&json!("uniform-random")));
+        assert_eq!(summary.get("baseline_state_model"), Some(&Value::Null));
+        assert_eq!(summary.get("crossing_density_ratio_to_uniform"), Some(&Value::Null));
+        assert!(summary
+            .get("first_crossing_density")
+            .and_then(Value::as_f64)
+            .is_some());
+        assert!(summary
+            .get("per_seed_crossing_spread")
+            .and_then(Value::as_f64)
+            .is_some());
+        assert!(summary
+            .get("phase_relaxation_steps_mean")
+            .and_then(Value::as_f64)
+            .is_some());
+        assert!(summary
+            .get("volatility_index_mean")
+            .and_then(Value::as_f64)
+            .is_some());
+
+        let rows = report
+            .get("rows")
+            .and_then(Value::as_array)
+            .expect("rows should be array");
+        assert_eq!(rows.len(), densities.len() * seeds.len());
+    }
+
+    #[test]
+    fn dirac_mode_sweep_summary_csv_emits_summary_header_metadata() {
+        let densities = vec![0.02, 0.12, 0.2];
+        let seeds = vec![42u64, 777u64];
+
+        let csv_export = dirac_mode_sweep_export("csv", &densities, &seeds, 6, "uniform-random", true, false)
+            .expect("csv export should succeed");
+        let lines = csv_export.lines().collect::<Vec<_>>();
+
+        assert_eq!(lines.first().copied(), Some("# object=csif.quantum.dirac_mode.threshold_report"));
+        let summary_line = lines.get(1).copied().unwrap_or_default();
+        assert!(summary_line.starts_with("# summary={"));
+        assert!(summary_line.contains("computational_schwinger_limit_analog"));
+        assert!(summary_line.contains("uniform-random"));
+        assert_eq!(
+            lines.get(2).copied(),
+            Some("state_model,coupling_density,seed,perturbation_amplitude,perturbation_frequency,n_qubits,state_dimension,support_density,low_grade_blade_concentration,observed_density,perturbed_observed_density,density_threshold,threshold_distance,perturbed_threshold_distance,dense_fallback_active,perturbed_dense_fallback_active,phase_relaxation_steps,torsion_hysteresis,perturbation_volatility_index,stable_envelope_sha256")
+        );
+    }
+
+    #[test]
+    fn dirac_mode_perturbation_sweep_reports_volatility_and_unraveling() {
+        let densities = vec![0.12, 0.2, 0.4];
+        let seeds = vec![42u64, 777u64];
+        let amplitudes = vec![0.0, 0.2, 0.6];
+
+        let json_export = dirac_mode_sweep_export_with_perturbation(
+            "json",
+            &densities,
+            &seeds,
+            6,
+            "high-grade-bias",
+            true,
+            true,
+            &amplitudes,
+            24.0,
+        )
+        .expect("perturbation summary export should succeed");
+        let report: Value = serde_json::from_str(&json_export).expect("json should parse");
+        let summary = report
+            .get("summary")
+            .and_then(Value::as_object)
+            .expect("summary should be object");
+        assert_eq!(summary.get("perturbation_frequency"), Some(&json!(24.0)));
+        assert!(summary
+            .get("perturbation_amplitudes")
+            .and_then(Value::as_array)
+            .map(|arr| arr.len() == 3)
+            .unwrap_or(false));
+        assert!(summary
+            .get("volatility_index_max")
+            .and_then(Value::as_f64)
+            .map(|v| v >= 0.0)
+            .unwrap_or(false));
+        assert!(summary.get("catastrophic_unraveling_amplitude").is_some());
+    }
+
+    #[test]
+    fn dirac_mode_state_models_produce_distinct_stable_hashes() {
+        let densities = vec![0.12];
+        let seeds = vec![42u64];
+        let random_rows = dirac_mode_sweep_points(&densities, &seeds, 6, "uniform-random")
+            .expect("uniform sweep should succeed");
+        let band_rows = dirac_mode_sweep_points(&densities, &seeds, 6, "contiguous-band")
+            .expect("band sweep should succeed");
+        assert_ne!(random_rows[0].stable_envelope_sha256, band_rows[0].stable_envelope_sha256);
+        assert_ne!(random_rows[0].state_model, band_rows[0].state_model);
+    }
+
+    #[test]
+    fn low_grade_bias_profile_crosses_earlier_than_uniform_random() {
+        let densities = vec![0.08];
+        let seeds = vec![42u64];
+        let random_rows = dirac_mode_sweep_points(&densities, &seeds, 6, "uniform-random")
+            .expect("uniform sweep should succeed");
+        let bias_rows = dirac_mode_sweep_points(&densities, &seeds, 6, "low-grade-bias")
+            .expect("bias sweep should succeed");
+        assert!(bias_rows[0].observed_density > random_rows[0].observed_density);
+        assert!(bias_rows[0].low_grade_blade_concentration > random_rows[0].low_grade_blade_concentration);
+        assert!(bias_rows[0].dense_fallback_active);
+        assert!(!random_rows[0].dense_fallback_active);
+    }
+
+    #[test]
+    fn high_grade_bias_profile_crosses_later_than_uniform_random() {
+        let densities = vec![0.12];
+        let seeds = vec![42u64];
+        let random_rows = dirac_mode_sweep_points(&densities, &seeds, 6, "uniform-random")
+            .expect("uniform sweep should succeed");
+        let bias_rows = dirac_mode_sweep_points(&densities, &seeds, 6, "high-grade-bias")
+            .expect("bias sweep should succeed");
+        assert!(bias_rows[0].observed_density < random_rows[0].observed_density);
+        assert!(bias_rows[0].low_grade_blade_concentration < random_rows[0].low_grade_blade_concentration);
+        assert!(!bias_rows[0].dense_fallback_active);
+        assert!(random_rows[0].dense_fallback_active);
+    }
+
+    #[test]
+    fn dirac_mode_profile_report_includes_baseline_delta() {
+        let densities = vec![0.08, 0.12];
+        let seeds = vec![42u64, 777u64];
+        let json_export = dirac_mode_sweep_export("json", &densities, &seeds, 6, "low-grade-bias", true, true)
+            .expect("json export should succeed");
+        let report: Value = serde_json::from_str(&json_export).expect("profile report should parse");
+        let summary = report.get("summary").and_then(Value::as_object).expect("summary should be object");
+        assert_eq!(summary.get("baseline_state_model"), Some(&json!("uniform-random")));
+        assert!(summary.get("baseline_first_crossing_density").and_then(Value::as_f64).is_some());
+        assert!(summary.get("first_crossing_density_delta_from_baseline").and_then(Value::as_f64).is_some());
+        assert!(summary.get("crossing_density_ratio_to_uniform").and_then(Value::as_f64).is_some());
+    }
+
+    #[test]
     fn bv_oracle_constructor_encodes_hidden_string() {
         let oracle = bv_oracle_from_hidden_string("10110").expect("oracle should build");
         assert_eq!(oracle.len(), 3);
@@ -1655,6 +2894,25 @@ mod tests {
         assert!(targets.contains(&vec![0, 5]));
         assert!(targets.contains(&vec![2, 5]));
         assert!(targets.contains(&vec![3, 5]));
+    }
+
+    #[test]
+    fn black_box_bv_supports_configurable_shots() {
+        let out = run_bernstein_vazirani_black_box_with_shots("1011", 1024)
+            .expect("bv black-box run should succeed");
+        assert_eq!(out.get("measurement_shots"), Some(&json!(1024)));
+        let shots = out
+            .get("shot_measurements")
+            .and_then(Value::as_array)
+            .expect("shot_measurements should be array");
+        assert_eq!(shots.len(), 4);
+        assert!(shots.iter().all(|entry| {
+            entry
+                .get("shots")
+                .and_then(Value::as_u64)
+                .map(|v| v == 1024)
+                .unwrap_or(false)
+        }));
     }
 
     #[test]
@@ -1718,7 +2976,7 @@ mod tests {
         assert_eq!(out.get("measurement_only_recovery"), Some(&json!(true)));
         assert_eq!(out.get("oracle_call_count"), Some(&json!(1)));
         assert_eq!(out.get("oracle_internal_gate_count"), Some(&json!(3)));
-        assert_eq!(out.get("measurement_shots"), Some(&json!(BLACK_BOX_BV_SHOTS)));
+        assert_eq!(out.get("measurement_shots"), Some(&json!(DEFAULT_BV_BLACK_BOX_SHOTS)));
 
         let recovered = out
             .get("recovered_hidden_string")

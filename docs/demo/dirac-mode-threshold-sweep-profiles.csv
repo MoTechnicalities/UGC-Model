@@ -1,0 +1,10 @@
+n_qubits,state_model,first_crossing_density,spread_min,spread_max,spread,crossing_seed_count,density_threshold,wall_runtime_ms
+5,uniform-random,0.12,0.12,0.12,0.0,2,0.12,34.50736
+6,uniform-random,0.12,0.12,0.12,0.0,2,0.12,36.68999
+7,uniform-random,0.14,0.14,0.14,0.0,2,0.12,51.52523
+5,contiguous-band,0.12,0.12,0.12,0.0,2,0.12,39.779853
+6,contiguous-band,0.12,0.12,0.12,0.0,2,0.12,42.654767
+7,contiguous-band,0.14,0.14,0.14,0.0,2,0.12,60.909036
+5,harmonic-stride,0.12,0.12,0.12,0.0,2,0.12,46.309563
+6,harmonic-stride,0.12,0.12,0.12,0.0,2,0.12,41.470565
+7,harmonic-stride,0.14,0.14,0.14,0.0,2,0.12,53.406387

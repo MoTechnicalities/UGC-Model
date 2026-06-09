@@ -1,0 +1,547 @@
+{
+  "object": "csif.quantum.dirac_mode.threshold_sweep.aggregate",
+  "schema_version": "csif_dirac_mode_threshold_sweep_aggregate_v1",
+  "generated_utc": "2026-06-09T13:55:00.401851+00:00",
+  "invocation": "python3 scripts/run-dirac-threshold-sweep.py --n-values 5,6 --profiles uniform-random,low-grade-bias --densities 0.08,0.10,0.12 --seeds 42,777 --output-prefix docs/demo/dirac-mode-threshold-sweep-low-grade",
+  "computational_analog_label": "computational_schwinger_limit_analog",
+  "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+  "n_values": [
+    5,
+    6
+  ],
+  "profiles": [
+    "uniform-random",
+    "low-grade-bias"
+  ],
+  "densities": [
+    0.08,
+    0.1,
+    0.12
+  ],
+  "seeds": [
+    42,
+    777
+  ],
+  "rows": [
+    {
+      "state_model": "uniform-random",
+      "n_qubits": 5,
+      "first_crossing_density": 0.12,
+      "delta_from_uniform": null,
+      "spread_min": 0.12,
+      "spread_max": 0.12,
+      "spread": 0.0,
+      "crossing_seed_count": 2,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 36.231168
+    },
+    {
+      "state_model": "uniform-random",
+      "n_qubits": 6,
+      "first_crossing_density": 0.12,
+      "delta_from_uniform": null,
+      "spread_min": 0.12,
+      "spread_max": 0.12,
+      "spread": 0.0,
+      "crossing_seed_count": 2,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 46.840914
+    },
+    {
+      "state_model": "low-grade-bias",
+      "n_qubits": 5,
+      "first_crossing_density": 0.08,
+      "delta_from_uniform": -0.04,
+      "spread_min": 0.08,
+      "spread_max": 0.08,
+      "spread": 0.0,
+      "crossing_seed_count": 2,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 39.547323
+    },
+    {
+      "state_model": "low-grade-bias",
+      "n_qubits": 6,
+      "first_crossing_density": 0.1,
+      "delta_from_uniform": -0.02,
+      "spread_min": 0.1,
+      "spread_max": 0.1,
+      "spread": 0.0,
+      "crossing_seed_count": 2,
+      "density_threshold": 0.12,
+      "wall_runtime_ms": 33.377893
+    }
+  ],
+  "reports": [
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.085366,
+          "n_qubits": 5,
+          "observed_density": 0.080078,
+          "seed": 42,
+          "stable_envelope_sha256": "ab3ce2ea4bfacb3e6c83a460150eb8997312ca88098a4a5099f5c0fab59a5e60",
+          "state_dimension": 1024,
+          "state_model": "uniform-random",
+          "support_density": 0.080078,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.073171,
+          "n_qubits": 5,
+          "observed_density": 0.080078,
+          "seed": 777,
+          "stable_envelope_sha256": "a155b23e11a020208969b131e0adaa8de7814e5258e08cae19d349919afb94ed",
+          "state_dimension": 1024,
+          "state_model": "uniform-random",
+          "support_density": 0.080078,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.088235,
+          "n_qubits": 5,
+          "observed_density": 0.099609,
+          "seed": 42,
+          "stable_envelope_sha256": "8d854d854e9f49c51b8adc103e4064b62abc0bf45b66d1f470d291e7eae1fa51",
+          "state_dimension": 1024,
+          "state_model": "uniform-random",
+          "support_density": 0.099609,
+          "threshold_distance": -0.020391
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.058824,
+          "n_qubits": 5,
+          "observed_density": 0.099609,
+          "seed": 777,
+          "stable_envelope_sha256": "ab8700b693084b5a22c81c06f733a87ac3601b414123478d37a92770957bf7ba",
+          "state_dimension": 1024,
+          "state_model": "uniform-random",
+          "support_density": 0.099609,
+          "threshold_distance": -0.020391
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.105691,
+          "n_qubits": 5,
+          "observed_density": 0.120117,
+          "seed": 42,
+          "stable_envelope_sha256": "f8089d03df8e22f89d021fb8b68298c7ab1ce70069e7d68228211c4742b87555",
+          "state_dimension": 1024,
+          "state_model": "uniform-random",
+          "support_density": 0.120117,
+          "threshold_distance": 0.000117
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.056911,
+          "n_qubits": 5,
+          "observed_density": 0.120117,
+          "seed": 777,
+          "stable_envelope_sha256": "6ad29a50345bb57bf414627ee5d0aa866f576c739096edf07d962c05a6caaaf9",
+          "state_dimension": 1024,
+          "state_model": "uniform-random",
+          "support_density": 0.120117,
+          "threshold_distance": 0.000117
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "baseline_first_crossing_density": null,
+        "baseline_per_seed_crossing_spread": null,
+        "baseline_state_model": null,
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 2,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.12,
+        "first_crossing_density_delta_from_baseline": null,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.12,
+        "per_seed_crossing_spread_min": 0.12,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.12,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.12,
+            "seed": 777
+          }
+        ],
+        "state_model": "uniform-random"
+      },
+      "_wall_runtime_ms": 36.231168
+    },
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.02439,
+          "n_qubits": 6,
+          "observed_density": 0.080078,
+          "seed": 42,
+          "stable_envelope_sha256": "33559ab63010681c040062d34261adfd978e099ad4bc7cc39caecdb1c8b1ecc1",
+          "state_dimension": 4096,
+          "state_model": "uniform-random",
+          "support_density": 0.080078,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.027439,
+          "n_qubits": 6,
+          "observed_density": 0.080078,
+          "seed": 777,
+          "stable_envelope_sha256": "f5a5378251692c9b57173bba4c75e0dbf980723edc1bcd142c154780e99aa762",
+          "state_dimension": 4096,
+          "state_model": "uniform-random",
+          "support_density": 0.080078,
+          "threshold_distance": -0.039922
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.021951,
+          "n_qubits": 6,
+          "observed_density": 0.100098,
+          "seed": 42,
+          "stable_envelope_sha256": "bcf44c22446903f4fe9c5dd3798d10574a79b97c545a3a1f1628122902db81b7",
+          "state_dimension": 4096,
+          "state_model": "uniform-random",
+          "support_density": 0.100098,
+          "threshold_distance": -0.019902
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.02439,
+          "n_qubits": 6,
+          "observed_density": 0.100098,
+          "seed": 777,
+          "stable_envelope_sha256": "033b6fe3f65899a349f2d953437f6825b279dce52ed8a3114d1084c147af0fd3",
+          "state_dimension": 4096,
+          "state_model": "uniform-random",
+          "support_density": 0.100098,
+          "threshold_distance": -0.019902
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.020325,
+          "n_qubits": 6,
+          "observed_density": 0.120117,
+          "seed": 42,
+          "stable_envelope_sha256": "754dc44c400f4404ee1fa10bf443001637e64c03bc8942318adcdd999590ede9",
+          "state_dimension": 4096,
+          "state_model": "uniform-random",
+          "support_density": 0.120117,
+          "threshold_distance": 0.000117
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.020325,
+          "n_qubits": 6,
+          "observed_density": 0.120117,
+          "seed": 777,
+          "stable_envelope_sha256": "ce6e1484f43f2a5a842b0063d886a3ec24fc876933e19bf63e983caec8bd98e3",
+          "state_dimension": 4096,
+          "state_model": "uniform-random",
+          "support_density": 0.120117,
+          "threshold_distance": 0.000117
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "baseline_first_crossing_density": null,
+        "baseline_per_seed_crossing_spread": null,
+        "baseline_state_model": null,
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 2,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.12,
+        "first_crossing_density_delta_from_baseline": null,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.12,
+        "per_seed_crossing_spread_min": 0.12,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.12,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.12,
+            "seed": 777
+          }
+        ],
+        "state_model": "uniform-random"
+      },
+      "_wall_runtime_ms": 46.840914
+    },
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.682927,
+          "n_qubits": 5,
+          "observed_density": 0.189453,
+          "seed": 42,
+          "stable_envelope_sha256": "aa96217f31cae6120a350ea2c7dcd0a04cf63b94d5c85b8076d7ed98a6eba7f3",
+          "state_dimension": 1024,
+          "state_model": "low-grade-bias",
+          "support_density": 0.080078,
+          "threshold_distance": 0.069453
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.682927,
+          "n_qubits": 5,
+          "observed_density": 0.189453,
+          "seed": 777,
+          "stable_envelope_sha256": "33034e593289e3730a5384ba517d41afe88fceeb6880b52fdb6bafca067a61c8",
+          "state_dimension": 1024,
+          "state_model": "low-grade-bias",
+          "support_density": 0.080078,
+          "threshold_distance": 0.069453
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.54902,
+          "n_qubits": 5,
+          "observed_density": 0.208984,
+          "seed": 42,
+          "stable_envelope_sha256": "2e228ff2a807c98d667c2f2f7f2fd5ab77daeff5303965cfa9e2b0c31c30d67d",
+          "state_dimension": 1024,
+          "state_model": "low-grade-bias",
+          "support_density": 0.099609,
+          "threshold_distance": 0.088984
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.54902,
+          "n_qubits": 5,
+          "observed_density": 0.208984,
+          "seed": 777,
+          "stable_envelope_sha256": "aaf51c1ee6f4961344ea901d454b37ee67738916de0751cd5df3647add8d37b7",
+          "state_dimension": 1024,
+          "state_model": "low-grade-bias",
+          "support_density": 0.099609,
+          "threshold_distance": 0.088984
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.455285,
+          "n_qubits": 5,
+          "observed_density": 0.229492,
+          "seed": 42,
+          "stable_envelope_sha256": "3e73a28d487ee70acf3b87e2c3a5a175af1c21beeb05ee48b593409216d1fc54",
+          "state_dimension": 1024,
+          "state_model": "low-grade-bias",
+          "support_density": 0.120117,
+          "threshold_distance": 0.109492
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.455285,
+          "n_qubits": 5,
+          "observed_density": 0.229492,
+          "seed": 777,
+          "stable_envelope_sha256": "8e25ff5b3a4f1838acd22d55132aa9d8f714d0959e1301782e752467b0f1f218",
+          "state_dimension": 1024,
+          "state_model": "low-grade-bias",
+          "support_density": 0.120117,
+          "threshold_distance": 0.109492
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "baseline_first_crossing_density": 0.12,
+        "baseline_per_seed_crossing_spread": 0.0,
+        "baseline_state_model": "uniform-random",
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 2,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.08,
+        "first_crossing_density_delta_from_baseline": -0.04,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.08,
+        "per_seed_crossing_spread_min": 0.08,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.08,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.08,
+            "seed": 777
+          }
+        ],
+        "state_model": "low-grade-bias"
+      },
+      "_wall_runtime_ms": 39.547323
+    },
+    {
+      "object": "csif.quantum.dirac_mode.threshold_report",
+      "rows": [
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.240854,
+          "n_qubits": 6,
+          "observed_density": 0.118652,
+          "seed": 42,
+          "stable_envelope_sha256": "9420c63a777ff73caf96f61b5d6a570df1c2036b546825dba95b53d51e6425d3",
+          "state_dimension": 4096,
+          "state_model": "low-grade-bias",
+          "support_density": 0.080078,
+          "threshold_distance": -0.001348
+        },
+        {
+          "coupling_density": 0.08,
+          "dense_fallback_active": false,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.240854,
+          "n_qubits": 6,
+          "observed_density": 0.118652,
+          "seed": 777,
+          "stable_envelope_sha256": "00c9f48c40809cf1292af5933c1f99640dae0cf44cef8869737b512aa7a7c065",
+          "state_dimension": 4096,
+          "state_model": "low-grade-bias",
+          "support_density": 0.080078,
+          "threshold_distance": -0.001348
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.192683,
+          "n_qubits": 6,
+          "observed_density": 0.138672,
+          "seed": 42,
+          "stable_envelope_sha256": "a9f9f538f704231a1e2f49076f8e76f6b96d202b203f7c487fe87c8ed347cf92",
+          "state_dimension": 4096,
+          "state_model": "low-grade-bias",
+          "support_density": 0.100098,
+          "threshold_distance": 0.018672
+        },
+        {
+          "coupling_density": 0.1,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.192683,
+          "n_qubits": 6,
+          "observed_density": 0.138672,
+          "seed": 777,
+          "stable_envelope_sha256": "524e828966c323180dffcf04ef0df684e4af2fa47948a69ec0e93abf147f1db2",
+          "state_dimension": 4096,
+          "state_model": "low-grade-bias",
+          "support_density": 0.100098,
+          "threshold_distance": 0.018672
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.160569,
+          "n_qubits": 6,
+          "observed_density": 0.158691,
+          "seed": 42,
+          "stable_envelope_sha256": "de6448d1f84636507e6b233ca94f368379d98604063356fdee776676a65e2a33",
+          "state_dimension": 4096,
+          "state_model": "low-grade-bias",
+          "support_density": 0.120117,
+          "threshold_distance": 0.038691
+        },
+        {
+          "coupling_density": 0.12,
+          "dense_fallback_active": true,
+          "density_threshold": 0.12,
+          "low_grade_blade_concentration": 0.160569,
+          "n_qubits": 6,
+          "observed_density": 0.158691,
+          "seed": 777,
+          "stable_envelope_sha256": "268bbf57dbbe9323d877b986fb228b973470d1947603215ca128728cf3aabd62",
+          "state_dimension": 4096,
+          "state_model": "low-grade-bias",
+          "support_density": 0.120117,
+          "threshold_distance": 0.038691
+        }
+      ],
+      "schema_version": "csif_dirac_mode_threshold_report_v1",
+      "summary": {
+        "baseline_first_crossing_density": 0.12,
+        "baseline_per_seed_crossing_spread": 0.0,
+        "baseline_state_model": "uniform-random",
+        "computational_analog_label": "computational_schwinger_limit_analog",
+        "computational_analog_scope": "sparse_to_dense_crystallization_threshold",
+        "crossing_seed_count": 2,
+        "density_threshold": 0.12,
+        "first_crossing_density": 0.1,
+        "first_crossing_density_delta_from_baseline": -0.02,
+        "per_seed_crossing_spread": 0.0,
+        "per_seed_crossing_spread_max": 0.1,
+        "per_seed_crossing_spread_min": 0.1,
+        "per_seed_first_crossing_density": [
+          {
+            "first_crossing_density": 0.1,
+            "seed": 42
+          },
+          {
+            "first_crossing_density": 0.1,
+            "seed": 777
+          }
+        ],
+        "state_model": "low-grade-bias"
+      },
+      "_wall_runtime_ms": 33.377893
+    }
+  ],
+  "outputs": {
+    "json_report_path": "docs/demo/dirac-mode-threshold-sweep-low-grade.json",
+    "csv_report_path": "docs/demo/dirac-mode-threshold-sweep-low-grade.csv",
+    "markdown_report_path": "docs/demo/dirac-mode-threshold-sweep-low-grade.md",
+    "plot_svg_path": "docs/demo/dirac-mode-threshold-sweep-low-grade.svg"
+  }
+}

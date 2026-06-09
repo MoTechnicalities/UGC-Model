@@ -1,0 +1,5 @@
+n_qubits,state_model,first_crossing_density,delta_from_uniform,spread_min,spread_max,spread,crossing_seed_count,density_threshold,wall_runtime_ms
+5,uniform-random,0.12,,0.12,0.12,0.0,2,0.12,36.231168
+6,uniform-random,0.12,,0.12,0.12,0.0,2,0.12,46.840914
+5,low-grade-bias,0.08,-0.04,0.08,0.08,0.0,2,0.12,39.547323
+6,low-grade-bias,0.1,-0.02,0.1,0.1,0.0,2,0.12,33.377893
