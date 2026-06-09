@@ -164,6 +164,63 @@ fn bv_cli_structural_mode_recovers_hidden_string() {
 }
 
 #[test]
+fn test_vacuum_identity_sanity() {
+    let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
+
+    let output = Command::new(bin)
+        .arg("bv")
+        .arg("--hidden")
+        .arg("1")
+        .arg("--mode")
+        .arg("structural")
+        .output()
+        .expect("bv command should run");
+
+    assert!(
+        output.status.success(),
+        "command failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let payload: Value = serde_json::from_slice(&output.stdout).expect("bv command should emit JSON output");
+    assert_eq!(payload.get("algorithm"), Some(&Value::String("bernstein_vazirani".to_string())));
+    assert_eq!(payload.get("execution_mode"), Some(&Value::String("structural".to_string())));
+    assert_eq!(payload.get("hidden_string"), Some(&Value::String("1".to_string())));
+    assert_eq!(payload.get("recovered_hidden_string"), Some(&Value::String("1".to_string())));
+}
+
+#[test]
+fn test_vacuum_identity_sanity_black_box() {
+    let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
+
+    let output = Command::new(bin)
+        .arg("bv")
+        .arg("--hidden")
+        .arg("1")
+        .arg("--mode")
+        .arg("black-box")
+        .arg("--shots")
+        .arg("1024")
+        .output()
+        .expect("bv command should run");
+
+    assert!(
+        output.status.success(),
+        "command failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let payload: Value = serde_json::from_slice(&output.stdout).expect("bv command should emit JSON output");
+    assert_eq!(payload.get("algorithm"), Some(&Value::String("bernstein_vazirani".to_string())));
+    assert_eq!(payload.get("execution_mode"), Some(&Value::String("black_box".to_string())));
+    assert_eq!(payload.get("measurement_shots"), Some(&Value::from(1024)));
+    assert_eq!(payload.get("hidden_string"), Some(&Value::String("1".to_string())));
+    assert_eq!(payload.get("recovered_hidden_string"), Some(&Value::String("1".to_string())));
+}
+
+#[test]
 fn shor_cli_factors_15_in_geometric_scaffold() {
     let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
 
