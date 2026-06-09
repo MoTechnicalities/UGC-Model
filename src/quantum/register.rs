@@ -767,6 +767,564 @@ pub struct DiracModeThresholdSummary {
     pub catastrophic_unraveling_amplitude: Option<f64>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DiracAnnihilationStepEvent {
+    pub step: u32,
+    pub overlap_density: f64,
+    pub separation_distance: f64,
+    pub local_phase_tensor_sum: f64,
+    pub shear_torque: f64,
+    pub contradiction_count: u32,
+    pub frame_transition_active: bool,
+    pub localized_core_pressure: f64,
+    pub rwif_phase_alignment: f64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DiracAnnihilationConservationSummary {
+    pub delta_q_topo: f64,
+    pub torsion_leak_detected: bool,
+    pub initial_mass_equivalent: f64,
+    pub energy_tensor_normalization_coefficient: f64,
+    pub released_wave_energy: f64,
+    pub reflected_wave_energy: f64,
+    pub pressure_equivalence_error: f64,
+    pub pressure_equivalence_compliant: bool,
+    pub phase_relaxation_gradient: f64,
+    pub invariant_violations: Vec<String>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct DiracAnnihilationProfileSummary {
+    pub state_model: String,
+    pub n_qubits: u8,
+    pub unwinding_steps: u32,
+    pub flux_coupling_density: f64,
+    pub frame_transition_threshold: f64,
+    pub frame_transition_step: Option<u32>,
+    pub crossing_density_ratio_to_uniform: f64,
+    pub unwinding_efficiency_index: f64,
+    pub peak_anticrystal_contradiction_count: u32,
+    pub residual_torsion_hysteresis: f64,
+    pub impedance_matching_efficiency: f64,
+    pub vorticity_dissipation_rate: f64,
+    pub conservation: DiracAnnihilationConservationSummary,
+    pub rwif_unwinding_trace: Vec<DiracAnnihilationStepEvent>,
+}
+
+fn dirac_profile_crossing_ratio_to_uniform(state_model: &str) -> f64 {
+    match canonical_dirac_state_model(state_model) {
+        "high-grade-bias" => 0.658832,
+        "low-grade-bias" => 1.107154,
+        "harmonic-stride" => 1.049737,
+        "contiguous-band" => 0.962000,
+        _ => 1.0,
+    }
+}
+
+fn dirac_profile_unwinding_coefficients(state_model: &str) -> (f64, f64, f64) {
+    match canonical_dirac_state_model(state_model) {
+        // Lower impedance profile: easier transfer to propagating waves.
+        "high-grade-bias" => (0.62, 1.26, 0.84),
+        // Higher impedance profile: stronger reflection and slower dissipation.
+        "low-grade-bias" => (1.10, 0.78, 0.46),
+        "harmonic-stride" => (0.95, 1.04, 0.71),
+        "contiguous-band" => (0.92, 0.96, 0.66),
+        _ => (1.0, 1.0, 0.62),
+    }
+}
+
+fn dirac_frame_energy_tensor_normalization(
+    frame_transition_threshold: f64,
+    flux_coupling_density: f64,
+    crossing_ratio: f64,
+) -> f64 {
+    // This projects confined CSIF core pressure into RWIF propagating-wave
+    // amplitudes at frame transition so conservation diagnostics compare like units.
+    let threshold_term = 0.30 * frame_transition_threshold;
+    let coupling_term = 0.05 * flux_coupling_density;
+    let crossing_term = 0.02 * (crossing_ratio - 1.0).abs().min(1.0);
+    (1.0 - threshold_term - coupling_term - crossing_term).clamp(0.70, 1.0)
+}
+
+fn simulate_dirac_annihilation_profile(
+    state_model: &str,
+    n_qubits: u8,
+    unwinding_steps: u32,
+    flux_coupling_density: f64,
+) -> DiracAnnihilationProfileSummary {
+    let state_model = canonical_dirac_state_model(state_model).to_string();
+    let (impedance, dissipation, compliance) =
+        dirac_profile_unwinding_coefficients(state_model.as_str());
+    let crossing_ratio = dirac_profile_crossing_ratio_to_uniform(state_model.as_str());
+    let frame_transition_threshold = bell_round6((0.30 + 0.34 * crossing_ratio).clamp(0.20, 0.92));
+
+    let c_squared = 64.0;
+    let initial_mass_equivalent = bell_round6(
+        ((n_qubits as f64) * flux_coupling_density * 0.85 + 0.15)
+            * (1.0 + 0.10 * crossing_ratio)
+            * 0.5,
+    );
+    let initial_core_pressure = initial_mass_equivalent * c_squared;
+
+    let mut trace = Vec::<DiracAnnihilationStepEvent>::new();
+    let mut frame_transition_step: Option<u32> = None;
+    let mut peak_anticrystal_contradiction_count = 0u32;
+    let mut cumulative_wave_energy = 0.0f64;
+    let mut cumulative_reflected_energy = 0.0f64;
+    let mut localized_core_pressure = initial_core_pressure;
+    let mut first_cleared_step: Option<u32> = None;
+
+    let safe_steps = unwinding_steps.max(1);
+    for step in 0..=safe_steps {
+        let step_norm = step as f64 / safe_steps as f64;
+        let separation_distance = 1.0 - step_norm;
+        let overlap_density = step_norm;
+
+        if frame_transition_step.is_none() && overlap_density >= frame_transition_threshold {
+            frame_transition_step = Some(step);
+        }
+
+        let phase_mixing = overlap_density.powf(1.15) * (1.0 + (1.0 - separation_distance) * 0.18);
+        let shear_torque = phase_mixing * flux_coupling_density * impedance;
+        let rwif_phase_alignment = (1.0 - (impedance - 0.75).abs() * 0.35).clamp(0.0, 1.0);
+        let frame_transition_active = frame_transition_step.map_or(false, |s| step >= s);
+
+        let contradiction_raw = if frame_transition_active {
+            (shear_torque * (1.6 - compliance) * 18.0).round().max(0.0)
+        } else {
+            (shear_torque * (1.2 - compliance) * 6.0).round().max(0.0)
+        };
+        let contradiction_count = contradiction_raw as u32;
+        if contradiction_count > peak_anticrystal_contradiction_count {
+            peak_anticrystal_contradiction_count = contradiction_count;
+        }
+
+        let release_rate = (dissipation * compliance * overlap_density * 0.22).clamp(0.0, 1.0);
+        let reflected_rate = ((impedance - compliance).max(0.0) * overlap_density * 0.11).clamp(0.0, 1.0);
+        let released = localized_core_pressure * release_rate;
+        let reflected = localized_core_pressure * reflected_rate;
+        cumulative_wave_energy += released;
+        cumulative_reflected_energy += reflected;
+        localized_core_pressure = (localized_core_pressure - released).max(0.0);
+
+        if first_cleared_step.is_none() && localized_core_pressure <= initial_core_pressure * 0.01 {
+            first_cleared_step = Some(step);
+        }
+
+        trace.push(DiracAnnihilationStepEvent {
+            step,
+            overlap_density: bell_round6(overlap_density),
+            separation_distance: bell_round6(separation_distance),
+            local_phase_tensor_sum: bell_round6(phase_mixing),
+            shear_torque: bell_round6(shear_torque),
+            contradiction_count,
+            frame_transition_active,
+            localized_core_pressure: bell_round6(localized_core_pressure),
+            rwif_phase_alignment: bell_round6(rwif_phase_alignment),
+        });
+    }
+
+    let energy_tensor_normalization_coefficient = if frame_transition_step.is_some() {
+        bell_round6(dirac_frame_energy_tensor_normalization(
+            frame_transition_threshold,
+            flux_coupling_density,
+            crossing_ratio,
+        ))
+    } else {
+        1.0
+    };
+
+    let released_wave_energy = bell_round6(cumulative_wave_energy * energy_tensor_normalization_coefficient);
+    let reflected_wave_energy =
+        bell_round6(cumulative_reflected_energy * energy_tensor_normalization_coefficient);
+    let residual_torsion_hysteresis =
+        bell_round6((localized_core_pressure / initial_core_pressure).clamp(0.0, 1.0) * (1.0 + (1.0 - compliance) * 0.5));
+    let impedance_matching_efficiency = bell_round6(
+        (released_wave_energy / (released_wave_energy + reflected_wave_energy + 1e-9)).clamp(0.0, 1.0),
+    );
+    let vorticity_dissipation_rate =
+        bell_round6(((initial_core_pressure - localized_core_pressure) / (safe_steps as f64 + 1.0)).max(0.0));
+
+    let unwinding_efficiency_index = if let Some(step) = first_cleared_step {
+        bell_round6(1.0 - (step as f64 / safe_steps as f64))
+    } else {
+        0.0
+    };
+
+    let electron_charge = -1.0f64;
+    let positron_charge = 1.0f64;
+    let residual_charge = residual_torsion_hysteresis * (impedance - compliance).abs() * 0.01;
+    let delta_q_topo = bell_round6(electron_charge + positron_charge + residual_charge);
+    let torsion_leak_detected = delta_q_topo.abs() > 0.0005;
+
+    let pressure_equivalence_error =
+        bell_round6((initial_core_pressure - (released_wave_energy + reflected_wave_energy)).abs());
+    let pressure_equivalence_compliant = pressure_equivalence_error <= (initial_core_pressure * 0.20);
+
+    let phase_relaxation_gradient =
+        bell_round6(((initial_core_pressure - localized_core_pressure) / safe_steps as f64).max(0.0));
+
+    let mut invariant_violations = Vec::<String>::new();
+    if torsion_leak_detected {
+        invariant_violations.push("Torsion Leak".to_string());
+    }
+    if !pressure_equivalence_compliant {
+        invariant_violations.push("Pressure-Equivalence Drift".to_string());
+    }
+    if frame_transition_step.is_none() {
+        invariant_violations.push("Frame Transition Not Reached".to_string());
+    }
+
+    DiracAnnihilationProfileSummary {
+        state_model,
+        n_qubits,
+        unwinding_steps: safe_steps,
+        flux_coupling_density: bell_round6(flux_coupling_density),
+        frame_transition_threshold,
+        frame_transition_step,
+        crossing_density_ratio_to_uniform: bell_round6(crossing_ratio),
+        unwinding_efficiency_index,
+        peak_anticrystal_contradiction_count,
+        residual_torsion_hysteresis,
+        impedance_matching_efficiency,
+        vorticity_dissipation_rate,
+        conservation: DiracAnnihilationConservationSummary {
+            delta_q_topo,
+            torsion_leak_detected,
+            initial_mass_equivalent,
+            energy_tensor_normalization_coefficient,
+            released_wave_energy,
+            reflected_wave_energy,
+            pressure_equivalence_error,
+            pressure_equivalence_compliant,
+            phase_relaxation_gradient,
+            invariant_violations,
+        },
+        rwif_unwinding_trace: trace,
+    }
+}
+
+pub fn dirac_annihilation_sweep_export(
+    format: &str,
+    n_qubits: u8,
+    profiles: &[String],
+    unwinding_steps: u32,
+    flux_coupling_density: f64,
+    output_prefix: Option<&str>,
+) -> Result<String, String> {
+    if n_qubits == 0 {
+        return Err("n_qubits must be >= 1".to_string());
+    }
+    if !(0.0..=1.0).contains(&flux_coupling_density) {
+        return Err(format!(
+            "flux_coupling_density must be in [0,1], got {}",
+            flux_coupling_density
+        ));
+    }
+    if unwinding_steps < 4 {
+        return Err("unwinding_steps must be >= 4".to_string());
+    }
+    if profiles.is_empty() {
+        return Err("profiles must not be empty".to_string());
+    }
+
+    let mut summaries = Vec::<DiracAnnihilationProfileSummary>::new();
+    for profile in profiles {
+        let canonical = canonical_dirac_state_model(profile);
+        if !is_supported_dirac_state_model(canonical) {
+            return Err(format!("unsupported dirac-annihilation state model: {}", profile));
+        }
+        summaries.push(simulate_dirac_annihilation_profile(
+            canonical,
+            n_qubits,
+            unwinding_steps,
+            flux_coupling_density,
+        ));
+    }
+
+    match format {
+        "json" => {
+            let mut unwinding_ranked = summaries
+                .iter()
+                .map(|summary| {
+                    (
+                        summary.state_model.clone(),
+                        summary.unwinding_efficiency_index,
+                    )
+                })
+                .collect::<Vec<_>>();
+            unwinding_ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+            let mut impedance_ranked = summaries
+                .iter()
+                .map(|summary| {
+                    (
+                        summary.state_model.clone(),
+                        summary.impedance_matching_efficiency,
+                    )
+                })
+                .collect::<Vec<_>>();
+            impedance_ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+            let mut pressure_compliance_ranked = summaries
+                .iter()
+                .map(|summary| {
+                    let allowable_error = summary.conservation.initial_mass_equivalent * 64.0 * 0.20;
+                    let compliance_margin = allowable_error - summary.conservation.pressure_equivalence_error;
+                    (
+                        summary.state_model.clone(),
+                        bell_round6(compliance_margin),
+                        bell_round6(allowable_error),
+                        summary.conservation.pressure_equivalence_error,
+                        summary.conservation.pressure_equivalence_compliant,
+                    )
+                })
+                .collect::<Vec<_>>();
+            pressure_compliance_ranked
+                .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+            let unwinding_rank_map = unwinding_ranked
+                .iter()
+                .enumerate()
+                .map(|(idx, (profile, score))| {
+                    (
+                        profile.clone(),
+                        json!({
+                            "rank": idx + 1,
+                            "unwinding_efficiency_index": bell_round6(*score),
+                        }),
+                    )
+                })
+                .collect::<serde_json::Map<String, serde_json::Value>>();
+
+            let impedance_rank_map = impedance_ranked
+                .iter()
+                .enumerate()
+                .map(|(idx, (profile, score))| {
+                    (
+                        profile.clone(),
+                        json!({
+                            "rank": idx + 1,
+                            "impedance_matching_efficiency": bell_round6(*score),
+                        }),
+                    )
+                })
+                .collect::<serde_json::Map<String, serde_json::Value>>();
+
+            let pressure_compliance_rank_map = pressure_compliance_ranked
+                .iter()
+                .enumerate()
+                .map(|(idx, (profile, margin, allowable_error, error, compliant))| {
+                    (
+                        profile.clone(),
+                        json!({
+                            "rank": idx + 1,
+                            "pressure_compliance_margin": bell_round6(*margin),
+                            "allowable_pressure_equivalence_error": bell_round6(*allowable_error),
+                            "pressure_equivalence_error": bell_round6(*error),
+                            "pressure_equivalence_compliant": compliant,
+                        }),
+                    )
+                })
+                .collect::<serde_json::Map<String, serde_json::Value>>();
+
+            let unwinding_rank_lookup = unwinding_ranked
+                .iter()
+                .enumerate()
+                .map(|(idx, (profile, _))| (profile.clone(), idx + 1))
+                .collect::<BTreeMap<String, usize>>();
+            let impedance_rank_lookup = impedance_ranked
+                .iter()
+                .enumerate()
+                .map(|(idx, (profile, _))| (profile.clone(), idx + 1))
+                .collect::<BTreeMap<String, usize>>();
+            let pressure_rank_lookup = pressure_compliance_ranked
+                .iter()
+                .enumerate()
+                .map(|(idx, (profile, _, _, _, _))| (profile.clone(), idx + 1))
+                .collect::<BTreeMap<String, usize>>();
+
+            let mut combined_ranked = summaries
+                .iter()
+                .map(|summary| {
+                    let profile = summary.state_model.clone();
+                    let unwinding_rank = *unwinding_rank_lookup.get(profile.as_str()).unwrap_or(&usize::MAX);
+                    let impedance_rank = *impedance_rank_lookup.get(profile.as_str()).unwrap_or(&usize::MAX);
+                    let pressure_rank = *pressure_rank_lookup.get(profile.as_str()).unwrap_or(&usize::MAX);
+                    let combined_score = bell_round6(
+                        (unwinding_rank as f64 + impedance_rank as f64 + pressure_rank as f64) / 3.0,
+                    );
+                    (
+                        profile,
+                        combined_score,
+                        unwinding_rank,
+                        impedance_rank,
+                        pressure_rank,
+                    )
+                })
+                .collect::<Vec<_>>();
+            combined_ranked.sort_by(|a, b| {
+                a.1.partial_cmp(&b.1)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.0.cmp(&b.0))
+            });
+
+            let combined_rank_map = combined_ranked
+                .iter()
+                .enumerate()
+                .map(|(idx, (profile, score, unwinding_rank, impedance_rank, pressure_rank))| {
+                    (
+                        profile.clone(),
+                        json!({
+                            "rank": idx + 1,
+                            "combined_leaderboard_score": bell_round6(*score),
+                            "unwinding_efficiency_rank": *unwinding_rank,
+                            "impedance_matching_rank": *impedance_rank,
+                            "pressure_compliance_rank": *pressure_rank,
+                        }),
+                    )
+                })
+                .collect::<serde_json::Map<String, serde_json::Value>>();
+
+            let mut comparison_markdown_lines = vec![
+                "| state_model | unwinding_efficiency_rank | impedance_matching_rank | pressure_compliance_rank | combined_leaderboard_score | pressure_compliance_margin | pressure_equivalence_error | allowable_pressure_equivalence_error | pressure_equivalence_compliant |".to_string(),
+                "|---|---:|---:|---:|---:|---:|---:|---:|---|".to_string(),
+            ];
+            for summary in &summaries {
+                let allowable_error = bell_round6(summary.conservation.initial_mass_equivalent * 64.0 * 0.20);
+                let compliance_margin = bell_round6(allowable_error - summary.conservation.pressure_equivalence_error);
+                let unwinding_rank = unwinding_rank_lookup
+                    .get(summary.state_model.as_str())
+                    .copied()
+                    .unwrap_or(0);
+                let impedance_rank = impedance_rank_lookup
+                    .get(summary.state_model.as_str())
+                    .copied()
+                    .unwrap_or(0);
+                let pressure_rank = pressure_rank_lookup
+                    .get(summary.state_model.as_str())
+                    .copied()
+                    .unwrap_or(0);
+                let combined_score = bell_round6((unwinding_rank as f64 + impedance_rank as f64 + pressure_rank as f64) / 3.0);
+                comparison_markdown_lines.push(format!(
+                    "| {} | {} | {} | {} | {:.6} | {:.6} | {:.6} | {:.6} | {} |",
+                    summary.state_model,
+                    unwinding_rank,
+                    impedance_rank,
+                    pressure_rank,
+                    combined_score,
+                    compliance_margin,
+                    summary.conservation.pressure_equivalence_error,
+                    allowable_error,
+                    summary.conservation.pressure_equivalence_compliant,
+                ));
+            }
+
+            let payload = json!({
+                "object": "csif.quantum.dirac_annihilation.report",
+                "schema_version": "csif_dirac_annihilation_report_v1",
+                "computational_analog_label": "computational_electron_positron_topological_unwinding",
+                "computational_analog_scope": "frame_aware_phase_annihilation_and_conservation_test",
+                "n_qubits": n_qubits,
+                "unwinding_steps": unwinding_steps,
+                "flux_coupling_density": bell_round6(flux_coupling_density),
+                "profiles": profiles,
+                "output_prefix": output_prefix,
+                "annihilation_report": summaries,
+                "profile_comparison": {
+                    "ranking_by_unwinding_efficiency": unwinding_ranked
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, (profile, score))| json!({
+                            "rank": idx + 1,
+                            "state_model": profile,
+                            "unwinding_efficiency_index": bell_round6(*score),
+                        }))
+                        .collect::<Vec<_>>(),
+                    "ranking_by_impedance_matching": impedance_ranked
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, (profile, score))| json!({
+                            "rank": idx + 1,
+                            "state_model": profile,
+                            "impedance_matching_efficiency": bell_round6(*score),
+                        }))
+                        .collect::<Vec<_>>(),
+                    "ranking_by_pressure_compliance": pressure_compliance_ranked
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, (profile, margin, allowable_error, error, compliant))| json!({
+                            "rank": idx + 1,
+                            "state_model": profile,
+                            "pressure_compliance_margin": bell_round6(*margin),
+                            "allowable_pressure_equivalence_error": bell_round6(*allowable_error),
+                            "pressure_equivalence_error": bell_round6(*error),
+                            "pressure_equivalence_compliant": compliant,
+                        }))
+                        .collect::<Vec<_>>(),
+                    "ranking_by_combined_score": combined_ranked
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, (profile, score, unwinding_rank, impedance_rank, pressure_rank))| json!({
+                            "rank": idx + 1,
+                            "state_model": profile,
+                            "combined_leaderboard_score": bell_round6(*score),
+                            "unwinding_efficiency_rank": *unwinding_rank,
+                            "impedance_matching_rank": *impedance_rank,
+                            "pressure_compliance_rank": *pressure_rank,
+                        }))
+                        .collect::<Vec<_>>(),
+                    "rank_by_profile": {
+                        "unwinding_efficiency": unwinding_rank_map,
+                        "impedance_matching": impedance_rank_map,
+                        "pressure_compliance": pressure_compliance_rank_map,
+                        "combined_score": combined_rank_map,
+                    },
+                    "comparison_markdown_table": comparison_markdown_lines.join("\n"),
+                }
+            });
+            serde_json::to_string(&payload)
+                .map_err(|e| format!("failed to serialize dirac-annihilation JSON export: {}", e))
+        }
+        "csv" => {
+            let mut out = String::from(
+                "state_model,n_qubits,unwinding_steps,flux_coupling_density,crossing_density_ratio_to_uniform,frame_transition_step,unwinding_efficiency_index,peak_anticrystal_contradiction_count,residual_torsion_hysteresis,impedance_matching_efficiency,vorticity_dissipation_rate,delta_q_topo,torsion_leak_detected,pressure_equivalence_error,pressure_equivalence_compliant,phase_relaxation_gradient,invariant_violation_count\n",
+            );
+            for summary in &summaries {
+                out.push_str(&format!(
+                    "{},{},{},{:.6},{:.6},{},{:.6},{},{:.6},{:.6},{:.6},{:.6},{},{:.6},{},{:.6},{}\n",
+                    summary.state_model,
+                    summary.n_qubits,
+                    summary.unwinding_steps,
+                    summary.flux_coupling_density,
+                    summary.crossing_density_ratio_to_uniform,
+                    summary
+                        .frame_transition_step
+                        .map(|v| v.to_string())
+                        .unwrap_or_else(|| "".to_string()),
+                    summary.unwinding_efficiency_index,
+                    summary.peak_anticrystal_contradiction_count,
+                    summary.residual_torsion_hysteresis,
+                    summary.impedance_matching_efficiency,
+                    summary.vorticity_dissipation_rate,
+                    summary.conservation.delta_q_topo,
+                    summary.conservation.torsion_leak_detected,
+                    summary.conservation.pressure_equivalence_error,
+                    summary.conservation.pressure_equivalence_compliant,
+                    summary.conservation.phase_relaxation_gradient,
+                    summary.conservation.invariant_violations.len(),
+                ));
+            }
+            Ok(out)
+        }
+        other => Err(format!(
+            "unsupported dirac-annihilation sweep export format: {}",
+            other
+        )),
+    }
+}
+
 fn dirac_model_perturbation_coefficients(state_model: &str) -> (f64, f64, f64) {
     match canonical_dirac_state_model(state_model) {
         // High-grade anisotropy is modeled as more resistant to boundary shear,

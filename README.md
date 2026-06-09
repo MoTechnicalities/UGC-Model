@@ -126,6 +126,15 @@ python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6 --profiles uniform
 
 # Multi-n perturbation schedule sweep with dedicated volatility SVG metric
 python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6 --profiles uniform-random,high-grade-bias --densities 0.12,0.20,0.40 --seeds 42,777 --perturbation-amplitudes 0.0,0.2,0.6 --perturbation-frequencies 8,24,48 --output-prefix docs/demo/dirac-mode-threshold-sweep-perturbation-volatility --svg-metric volatility
+
+# Dense frequency-domain resonance hunt (volatility vs frequency)
+FREQS=$(seq -s, 4 2 96) && python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6 --profiles uniform-random,high-grade-bias --densities 0.12,0.20,0.40 --seeds 42,777 --perturbation-amplitudes 0.0,0.2,0.6 --perturbation-frequencies "$FREQS" --output-prefix docs/demo/dirac-mode-threshold-sweep-resonance-hunt-f4-96-step2 --svg-metric volatility --svg-domain frequency
+
+# Profile-expanded resonance scan with seed-bootstrap confidence intervals
+FREQS=$(seq -s, 46 1 54) && python3 scripts/run-dirac-threshold-sweep.py --n-values 4,5,6 --profiles uniform-random,harmonic-stride,low-grade-bias,high-grade-bias --densities 0.12,0.20,0.40 --seeds 42,777 --perturbation-amplitudes 0.2,0.6 --perturbation-frequencies "$FREQS" --output-prefix docs/demo/dirac-mode-threshold-sweep-profile-impedance-f46-54-step1 --svg-metric volatility --svg-domain frequency --bootstrap-seed-ci --bootstrap-iterations 1000 --bootstrap-ci-level 0.95 --bootstrap-rng-seed 20260609
+
+# Frame-aware annihilation dynamics sweep by profile family
+cargo run -- dirac-annihilation --n-qubits 6 --profiles uniform-random,low-grade-bias,high-grade-bias,harmonic-stride --unwinding-steps 128 --flux-coupling-density 0.40 --sweep-export json --output-prefix docs/demo/dirac-annihilation-dynamics
 ```
 
 For the full benchmark narrative and command log, see [docs/demo/cli-demo.md](docs/demo/cli-demo.md).
@@ -134,7 +143,9 @@ The dirac-mode sweep summaries now surface both `delta_from_uniform` and `crossi
 
 Perturbation-sensitivity sweeps extend this with direct stress-response metrics (`phase_relaxation_steps_mean`, `torsion_hysteresis_mean`, `volatility_index_mean`, and `catastrophic_unraveling_amplitude`) so boundary hardening and unraveling behavior can be compared under injected shear amplitude/frequency schedules.
 
-The Python sweep runner now accepts `--perturbation-amplitudes` and `--perturbation-frequencies`, and batches all amplitude x frequency combinations directly into JSON/CSV/Markdown/SVG artifacts for reproducible perturbation schedule studies.
+The Python sweep runner now accepts `--perturbation-amplitudes` and `--perturbation-frequencies`, and batches all amplitude x frequency combinations directly into JSON/CSV/Markdown/SVG artifacts for reproducible perturbation schedule studies. The SVG export supports `--svg-domain profile|frequency`, so resonance hunting can plot `volatility_index_mean(f)` directly. Aggregate reports now include an automatic resonance detector section with per-series peak/trough markers, FWHM-derived `q_factor`, anti-resonant delta/slope, profile-level Q variance summaries, and a profile impedance ranking computed as comparative deltas/ratios versus the `uniform-random` baseline. Optional seed-bootstrap confidence intervals can be added with `--bootstrap-seed-ci` plus `--bootstrap-iterations`, `--bootstrap-ci-level`, and `--bootstrap-rng-seed`.
+
+The Rust CLI now includes `dirac-annihilation` for frame-aware phase-unwinding sweeps that report `unwinding_efficiency_index`, `peak_anticrystal_contradiction_count`, `residual_torsion_hysteresis`, `impedance_matching_efficiency`, and conservation diagnostics (`delta_q_topo`, pressure-equivalence drift, and phase-relaxation gradient) per profile.
 
 Unified Geometric Cognition (UGC) is a deterministic, auditable intelligence model
 built on CSIF (Crystal Structure Information Format) and RWIF (Resonant Wave

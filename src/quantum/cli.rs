@@ -43,6 +43,16 @@ pub struct DiracModeCommandArgs {
     pub profile_report: bool,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct DiracAnnihilationCommandArgs {
+    pub n_qubits: u8,
+    pub profiles: Vec<String>,
+    pub unwinding_steps: u32,
+    pub flux_coupling_density: f64,
+    pub sweep_export: Option<String>,
+    pub output_prefix: Option<String>,
+}
+
 fn parse_noise_factor_list_csv(value: &str) -> Result<Vec<f64>, String> {
     let mut values = Vec::<f64>::new();
     for item in value.split(',') {
@@ -137,6 +147,27 @@ fn parse_perturbation_frequency(value: &str) -> Result<f64, String> {
         return Err(format!("invalid --perturbation-frequency value: {}", value));
     }
     Ok(parsed)
+}
+
+fn parse_dirac_profile_list_csv(value: &str) -> Result<Vec<String>, String> {
+    let mut values = Vec::<String>::new();
+    for item in value.split(',') {
+        let token = item.trim();
+        if token.is_empty() {
+            continue;
+        }
+        let normalized = token.to_ascii_lowercase();
+        if !super::register::is_supported_dirac_state_model(&normalized) {
+            return Err(format!("invalid --profiles value: {}", value));
+        }
+        if !values.iter().any(|existing| existing == &normalized) {
+            values.push(normalized);
+        }
+    }
+    if values.is_empty() {
+        return Err(format!("invalid --profiles value: {}", value));
+    }
+    Ok(values)
 }
 
 pub fn parse_quantum_register_scaffold_args(args: &[String]) -> Result<QuantumRegisterScaffoldArgs, String> {
@@ -475,6 +506,91 @@ pub fn parse_dirac_mode_command_args(args: &[String]) -> Result<DiracModeCommand
     })
 }
 
+pub fn parse_dirac_annihilation_command_args(args: &[String]) -> Result<DiracAnnihilationCommandArgs, String> {
+    let mut n_qubits = 6u8;
+    let mut profiles = vec!["uniform-random".to_string()];
+    let mut unwinding_steps = 128u32;
+    let mut flux_coupling_density = 0.40f64;
+    let mut sweep_export: Option<String> = None;
+    let mut output_prefix: Option<String> = None;
+    let mut i = 0usize;
+
+    while i < args.len() {
+        match args[i].as_str() {
+            "--n-qubits" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--n-qubits requires a value".to_string());
+                };
+                n_qubits = match value.parse::<u8>() {
+                    Ok(v) if v >= 1 => v,
+                    _ => return Err(format!("invalid --n-qubits value: {}", value)),
+                };
+                i += 2;
+            }
+            "--profiles" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--profiles requires a value".to_string());
+                };
+                profiles = parse_dirac_profile_list_csv(value)?;
+                i += 2;
+            }
+            "--unwinding-steps" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--unwinding-steps requires a value".to_string());
+                };
+                unwinding_steps = match value.parse::<u32>() {
+                    Ok(v) if v >= 4 => v,
+                    _ => return Err(format!("invalid --unwinding-steps value: {}", value)),
+                };
+                i += 2;
+            }
+            "--flux-coupling-density" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--flux-coupling-density requires a value".to_string());
+                };
+                flux_coupling_density = match value.parse::<f64>() {
+                    Ok(v) if (0.0..=1.0).contains(&v) => v,
+                    _ => return Err(format!("invalid --flux-coupling-density value: {}", value)),
+                };
+                i += 2;
+            }
+            "--sweep-export" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--sweep-export requires a value".to_string());
+                };
+                let normalized = value.to_ascii_lowercase();
+                if normalized != "json" && normalized != "csv" {
+                    return Err(format!("invalid --sweep-export value: {}", value));
+                }
+                sweep_export = Some(normalized);
+                i += 2;
+            }
+            "--output-prefix" => {
+                let Some(value) = args.get(i + 1) else {
+                    return Err("--output-prefix requires a value".to_string());
+                };
+                if value.trim().is_empty() {
+                    return Err("invalid --output-prefix value: empty".to_string());
+                }
+                output_prefix = Some(value.clone());
+                i += 2;
+            }
+            other => {
+                return Err(format!("unknown dirac-annihilation option: {}", other));
+            }
+        }
+    }
+
+    Ok(DiracAnnihilationCommandArgs {
+        n_qubits,
+        profiles,
+        unwinding_steps,
+        flux_coupling_density,
+        sweep_export,
+        output_prefix,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -703,5 +819,55 @@ mod tests {
         let args = vec_args(&["--pretty"]);
         let err = parse_dirac_mode_command_args(&args).expect_err("parse should fail");
         assert_eq!(err, "unknown dirac-mode option: --pretty");
+    }
+
+    #[test]
+    fn dirac_annihilation_parser_accepts_profile_sweep() {
+        let args = vec_args(&[
+            "--n-qubits",
+            "6",
+            "--profiles",
+            "uniform-random,low-grade-bias,high-grade-bias,harmonic-stride",
+            "--unwinding-steps",
+            "128",
+            "--flux-coupling-density",
+            "0.40",
+            "--sweep-export",
+            "json",
+            "--output-prefix",
+            "docs/demo/dirac-annihilation-dynamics",
+        ]);
+        let parsed = parse_dirac_annihilation_command_args(&args).expect("parse should succeed");
+        assert_eq!(parsed.n_qubits, 6);
+        assert_eq!(
+            parsed.profiles,
+            vec![
+                "uniform-random".to_string(),
+                "low-grade-bias".to_string(),
+                "high-grade-bias".to_string(),
+                "harmonic-stride".to_string()
+            ]
+        );
+        assert_eq!(parsed.unwinding_steps, 128);
+        assert_eq!(parsed.flux_coupling_density, 0.40);
+        assert_eq!(parsed.sweep_export.as_deref(), Some("json"));
+        assert_eq!(
+            parsed.output_prefix.as_deref(),
+            Some("docs/demo/dirac-annihilation-dynamics")
+        );
+    }
+
+    #[test]
+    fn dirac_annihilation_parser_rejects_bad_profiles() {
+        let args = vec_args(&["--profiles", "uniform-random,mystery"]);
+        let err = parse_dirac_annihilation_command_args(&args).expect_err("parse should fail");
+        assert_eq!(err, "invalid --profiles value: uniform-random,mystery");
+    }
+
+    #[test]
+    fn dirac_annihilation_parser_rejects_unknown_option() {
+        let args = vec_args(&["--pretty"]);
+        let err = parse_dirac_annihilation_command_args(&args).expect_err("parse should fail");
+        assert_eq!(err, "unknown dirac-annihilation option: --pretty");
     }
 }

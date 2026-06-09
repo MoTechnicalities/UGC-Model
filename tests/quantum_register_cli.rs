@@ -1,5 +1,6 @@
 use serde_json::Value;
 use std::process::Command;
+use std::{env, fs};
 
 fn run_scaffold(bin: &str, n_qubits: u8) -> Value {
     let output = Command::new(bin)
@@ -539,4 +540,239 @@ fn dirac_mode_cli_perturbation_summary_emits_volatility_metrics() {
     assert!(summary
         .get("catastrophic_unraveling_amplitude")
         .is_some());
+}
+
+#[test]
+fn dirac_annihilation_cli_json_emits_report_object() {
+    let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
+
+    let output = Command::new(bin)
+        .arg("dirac-annihilation")
+        .arg("--n-qubits")
+        .arg("6")
+        .arg("--profiles")
+        .arg("uniform-random,low-grade-bias,high-grade-bias,harmonic-stride")
+        .arg("--unwinding-steps")
+        .arg("64")
+        .arg("--flux-coupling-density")
+        .arg("0.40")
+        .arg("--sweep-export")
+        .arg("json")
+        .output()
+        .expect("dirac-annihilation command should run");
+
+    assert!(
+        output.status.success(),
+        "command failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let report: Value = serde_json::from_slice(&output.stdout).expect("dirac-annihilation json should parse");
+    assert_eq!(
+        report.get("object"),
+        Some(&Value::String("csif.quantum.dirac_annihilation.report".to_string()))
+    );
+    let rows = report
+        .get("annihilation_report")
+        .and_then(Value::as_array)
+        .expect("annihilation_report should be array");
+    assert_eq!(rows.len(), 4);
+    let first = rows[0].as_object().expect("row should be object");
+    assert!(first.get("unwinding_efficiency_index").and_then(Value::as_f64).is_some());
+    assert!(first
+        .get("peak_anticrystal_contradiction_count")
+        .and_then(Value::as_u64)
+        .is_some());
+    assert!(first
+        .get("impedance_matching_efficiency")
+        .and_then(Value::as_f64)
+        .is_some());
+    assert!(first
+        .get("residual_torsion_hysteresis")
+        .and_then(Value::as_f64)
+        .is_some());
+    let conservation = first
+        .get("conservation")
+        .and_then(Value::as_object)
+        .expect("conservation should be object");
+    assert!(conservation.get("delta_q_topo").and_then(Value::as_f64).is_some());
+    assert!(conservation
+        .get("energy_tensor_normalization_coefficient")
+        .and_then(Value::as_f64)
+        .map(|value| (0.0..=1.0).contains(&value))
+        .unwrap_or(false));
+    assert!(conservation
+        .get("phase_relaxation_gradient")
+        .and_then(Value::as_f64)
+        .is_some());
+
+    let comparison = report
+        .get("profile_comparison")
+        .and_then(Value::as_object)
+        .expect("profile_comparison should be object");
+    let by_unwinding = comparison
+        .get("ranking_by_unwinding_efficiency")
+        .and_then(Value::as_array)
+        .expect("ranking_by_unwinding_efficiency should be array");
+    let by_impedance = comparison
+        .get("ranking_by_impedance_matching")
+        .and_then(Value::as_array)
+        .expect("ranking_by_impedance_matching should be array");
+    let by_pressure = comparison
+        .get("ranking_by_pressure_compliance")
+        .and_then(Value::as_array)
+        .expect("ranking_by_pressure_compliance should be array");
+    let by_combined = comparison
+        .get("ranking_by_combined_score")
+        .and_then(Value::as_array)
+        .expect("ranking_by_combined_score should be array");
+    assert_eq!(by_unwinding.len(), rows.len());
+    assert_eq!(by_impedance.len(), rows.len());
+    assert_eq!(by_pressure.len(), rows.len());
+    assert_eq!(by_combined.len(), rows.len());
+
+    for window in by_unwinding.windows(2) {
+        let left = window[0]
+            .get("unwinding_efficiency_index")
+            .and_then(Value::as_f64)
+            .expect("unwinding score should exist");
+        let right = window[1]
+            .get("unwinding_efficiency_index")
+            .and_then(Value::as_f64)
+            .expect("unwinding score should exist");
+        assert!(left >= right);
+    }
+    for window in by_impedance.windows(2) {
+        let left = window[0]
+            .get("impedance_matching_efficiency")
+            .and_then(Value::as_f64)
+            .expect("impedance score should exist");
+        let right = window[1]
+            .get("impedance_matching_efficiency")
+            .and_then(Value::as_f64)
+            .expect("impedance score should exist");
+        assert!(left >= right);
+    }
+    for window in by_pressure.windows(2) {
+        let left = window[0]
+            .get("pressure_compliance_margin")
+            .and_then(Value::as_f64)
+            .expect("pressure compliance margin should exist");
+        let right = window[1]
+            .get("pressure_compliance_margin")
+            .and_then(Value::as_f64)
+            .expect("pressure compliance margin should exist");
+        assert!(left >= right);
+    }
+    for window in by_combined.windows(2) {
+        let left = window[0]
+            .get("combined_leaderboard_score")
+            .and_then(Value::as_f64)
+            .expect("combined score should exist");
+        let right = window[1]
+            .get("combined_leaderboard_score")
+            .and_then(Value::as_f64)
+            .expect("combined score should exist");
+        assert!(left <= right);
+    }
+
+    let markdown_table = comparison
+        .get("comparison_markdown_table")
+        .and_then(Value::as_str)
+        .expect("comparison_markdown_table should be string");
+    assert!(markdown_table.contains("| state_model | unwinding_efficiency_rank | impedance_matching_rank | pressure_compliance_rank | combined_leaderboard_score |"));
+
+    let rank_by_profile = comparison
+        .get("rank_by_profile")
+        .and_then(Value::as_object)
+        .expect("rank_by_profile should be object");
+    let profile_unwinding = rank_by_profile
+        .get("unwinding_efficiency")
+        .and_then(Value::as_object)
+        .expect("unwinding_efficiency rank map should be object");
+    let profile_impedance = rank_by_profile
+        .get("impedance_matching")
+        .and_then(Value::as_object)
+        .expect("impedance_matching rank map should be object");
+    let profile_pressure = rank_by_profile
+        .get("pressure_compliance")
+        .and_then(Value::as_object)
+        .expect("pressure_compliance rank map should be object");
+    let profile_combined = rank_by_profile
+        .get("combined_score")
+        .and_then(Value::as_object)
+        .expect("combined_score rank map should be object");
+    assert_eq!(profile_unwinding.len(), rows.len());
+    assert_eq!(profile_impedance.len(), rows.len());
+    assert_eq!(profile_pressure.len(), rows.len());
+    assert_eq!(profile_combined.len(), rows.len());
+}
+
+#[test]
+fn dirac_annihilation_cli_csv_emits_header_and_rows() {
+    let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
+
+    let output = Command::new(bin)
+        .arg("dirac-annihilation")
+        .arg("--profiles")
+        .arg("uniform-random,high-grade-bias")
+        .arg("--unwinding-steps")
+        .arg("32")
+        .arg("--flux-coupling-density")
+        .arg("0.40")
+        .arg("--sweep-export")
+        .arg("csv")
+        .output()
+        .expect("dirac-annihilation csv command should run");
+
+    assert!(
+        output.status.success(),
+        "command failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let csv = String::from_utf8(output.stdout).expect("csv should be valid utf-8");
+    let lines = csv
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        lines.first().copied(),
+        Some("state_model,n_qubits,unwinding_steps,flux_coupling_density,crossing_density_ratio_to_uniform,frame_transition_step,unwinding_efficiency_index,peak_anticrystal_contradiction_count,residual_torsion_hysteresis,impedance_matching_efficiency,vorticity_dissipation_rate,delta_q_topo,torsion_leak_detected,pressure_equivalence_error,pressure_equivalence_compliant,phase_relaxation_gradient,invariant_violation_count")
+    );
+    assert_eq!(lines.len(), 3);
+}
+
+#[test]
+fn dirac_annihilation_cli_output_prefix_writes_json_artifact() {
+    let bin = env!("CARGO_BIN_EXE_csif_agent_v2_rust");
+    let base = env::temp_dir().join("ugcmodel_dirac_annihilation_test");
+    let _ = fs::remove_file(base.with_extension("json"));
+
+    let output = Command::new(bin)
+        .arg("dirac-annihilation")
+        .arg("--profiles")
+        .arg("uniform-random,high-grade-bias")
+        .arg("--sweep-export")
+        .arg("json")
+        .arg("--output-prefix")
+        .arg(base.to_string_lossy().to_string())
+        .output()
+        .expect("dirac-annihilation output-prefix command should run");
+
+    assert!(
+        output.status.success(),
+        "command failed\nstdout:\n{}\nstderr:\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let artifact = base.with_extension("json");
+    assert!(artifact.exists(), "expected artifact {} to exist", artifact.display());
+    let raw = fs::read_to_string(&artifact).expect("artifact should be readable");
+    assert!(raw.contains("csif.quantum.dirac_annihilation.report"));
+
+    let _ = fs::remove_file(artifact);
 }
